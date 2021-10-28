@@ -1,0 +1,6 @@
+SELECT DISTINCT name
+FROM FIELDS
+WHERE ntid IN (
+    SELECT mid
+    FROM notes
+    WHERE id IN

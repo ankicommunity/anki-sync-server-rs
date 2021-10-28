@@ -1,0 +1,52 @@
+@use 'ts/sass/scrollbar';
+
+anki-editable {
+    display: block;
+    overflow-wrap: break-word;
+    overflow: auto;
+    padding: 6px;
+
+    &:empty::after {
+        content: "\a";
+        white-space: pre;
+    }
+
+    * {
+        max-width: 100%;
+    }
+}
+
+p {
+    margin-top: 0;
+    margin-bottom: 1rem;
+
+    &:empty::after {
+        content: "\a";
+        white-space: pre;
+    }
+}
+
+:host(.nightMode) * {
+    @include scrollbar.night-mode;
+}
+
+img.drawing {
+    zoom: 50%;
+
+    .nightMode & {
+        filter: unquote("invert() hue-rotate(180deg)");
+    }
+}
+
+[hidden] {
+    display: none;
+}
+
+@import "ts/sass/codemirror/lib/codemirror";
+@import "ts/sass/codemirror/theme/monokai";
+@import "ts/sass/codemirror/addon/fold/foldgutter";
+
+.CodeMirror {
+    height: auto;
+    padding: 6px 0;
+}

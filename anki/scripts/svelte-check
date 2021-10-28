@@ -1,0 +1,3 @@
+#!/bin/bash
+
+SASS_PATH=$(pwd)/bazel-bin ts/node_modules/.bin/svelte-check

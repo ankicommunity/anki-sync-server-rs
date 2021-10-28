@@ -1,0 +1,42 @@
+@use 'vars';
+
+$body-color: var(--text-fg);
+$body-bg: var(--window-bg);
+
+$link-hover-color: var(--link);
+$link-hover-decoration: none;
+
+$utilities: (
+    "opacity": (
+        property: opacity,
+        values: (
+            0: 0,
+            25: 0.25,
+            50: 0.5,
+            75: 0.75,
+            100: 1,
+        ),
+    ),
+);
+
+@import "ts/sass/bootstrap/bootstrap-reboot";
+@import "ts/sass/bootstrap/bootstrap-utilities";
+
+/* Bootstrap "extensions" */
+.flex-basis-100 {
+    flex-basis: 100%;
+}
+
+.flex-basis-75 {
+    flex-basis: 75%;
+}
+
+body,
+html {
+    overscroll-behavior: none;
+}
+
+button {
+    /* override transition for instant hover response */
+    transition: color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}

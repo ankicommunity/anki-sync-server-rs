@@ -1,0 +1,64 @@
+/* Copyright: Ankitects Pty Ltd and contributors
+ * License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html */
+
+@use 'ts/sass/base';
+@use 'ts/sass/scrollbar';
+
+.nightMode {
+    @include scrollbar.night-mode;
+}
+
+#fields {
+    display: flex;
+    flex-direction: column;
+    margin: 5px;
+}
+
+.field {
+    border: 1px solid var(--border);
+    background: var(--frame-bg);
+
+    &.dupe {
+        // this works around the background colour persisting in copy+paste
+        // (https://github.com/ankitects/anki/pull/1278)
+        background-image: linear-gradient(var(--flag1-bg), var(--flag1-bg));
+    }
+}
+
+.fname {
+    vertical-align: middle;
+    padding: 0;
+}
+
+#dupes,
+#cloze-hint {
+    position: sticky;
+    bottom: 0;
+
+    text-align: center;
+    background-color: var(--window-bg);
+
+    &.is-inactive {
+        display: none;
+    }
+
+    a {
+        color: var(--link);
+    }
+}
+
+.icon > svg {
+    fill: var(--text-fg);
+}
+
+.pin-icon {
+    cursor: pointer;
+
+    &.is-inactive {
+        opacity: 0.2;
+    }
+
+    &.icon--hover {
+        opacity: 0.5;
+    }
+}

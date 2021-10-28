@@ -1,0 +1,43 @@
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+config_setting(
+    name = "release",
+    values = {
+        "compilation_mode": "opt",
+    },
+)
+
+genrule(
+    name = "buildinfo",
+    srcs = ["//:defs.bzl"],
+    outs = ["buildinfo.txt"],
+    cmd = select({
+        "release": "$(location //scripts:buildinfo) $(location //:defs.bzl) bazel-out/stable-status.txt release > $@",
+        "//conditions:default": "$(location //scripts:buildinfo) $(location //:defs.bzl) bazel-out/stable-status.txt devel > $@",
+    }),
+    stamp = 1,
+    tools = [
+        "//scripts:buildinfo",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "tsconfig.json",
+    actual = "//ts:tsconfig.json",
+    visibility = ["//visibility:public"],
+)
+
+pkg_tar(
+    name = "dist",
+    srcs = [
+        "//pylib/anki:wheel",
+        "//qt/aqt:wheel",
+    ],
+    mode = "0644",
+    package_dir = "bazel-dist",
+    tags = ["manual"],
+)
+
+# for version info
+exports_files(["defs.bzl"])

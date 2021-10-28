@@ -1,0 +1,3 @@
+load("//ts:vendor.bzl", "copy_mathjax")
+
+copy_mathjax(name = "mathjax")
