@@ -1,3 +1,4 @@
+custom sync server implemented in Rust.
 ### download binary package
 ### build from source
 ### TODO
