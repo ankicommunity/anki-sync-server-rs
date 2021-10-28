@@ -1,0 +1,57 @@
+parse ankisyncd.conf
+
+how to compile rslib sucessfully
+1.put anki-sync-server-rs in dir anki-,in its dep toml ,anki={path="../rslib"}
+2.put anki-sync-server-rs in anki- cargo.toml field workspace
+
+work around /meta
+reference examples/basics/middleware
+
+get session error on msync uploadChanges? 
+pattern match err when to hkey == None 
+
+delete deck cause sanity check err :cards and notes arent 
+equal. start sucessfully delete records from db,yet applychanges
+restore back
+1.maybe server usn is not correct,as applychanges use the usn the 
+same as start,py impl dont use the usn on applychanges
+2.see cards count on applychanges python impl :equal
+3.start dont return server graves,see diff to py impl (py dont too)
+4.guess before start ,open collection will read db into
+memory and will not afftect local db,so operations 
+like delete from db dont work until db execute commit ,finally
+works,by add begin trx and commit trx in start
+
+media downloadFiles : Ankidroid client err in opening zip file.
+1.media db not update on uploadChanges after delete and check media
+on client :db update comfirm
+2.try open zip data on server to be synced to client,can open
+meta data on server
+3.compression format not correct? seems have no effect Stored 
+and Deflated
+4.able to read data from zip on server? ok 
+5.response type err ,currently use json(Option<vec<u8>>),
+change to body(vec<u8>),err msg changed
+6.meta file format incorrect from vec<[String;2]> to 
+{files: Vec<(String,Option<String>)>},new err appear
+7.no value for 0 ,seems Ankidroid need downloadFiles response
+zip meta to be hashmap-like,sucessfully sync
+
+err decode response body EOF when parsing... on Windows
+seems applychunks err?
+1.change response body to "null",ok
+
+mediaChanges:error decoding response body:
+ invalid type: string "1", expected i32
+1.change media db entry from Vec<[String;3]> to  Vec<(String,i32,String)>
+
+delete deck then sync on pc fail on applygraves,decoding response
+body err
+1.response body from "" to "null"
+
+remove unused imports
+
+introduce ankisyncctl(account manager)
+
+create and edit readme
+

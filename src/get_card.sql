@@ -1,0 +1,20 @@
+SELECT id,
+  nid,
+  did,
+  ord,
+  cast(mod AS integer),
+  ?,
+  type,
+  queue,
+  due,
+  cast(ivl AS integer),
+  factor,
+  reps,
+  lapses,
+  left,
+  odue,
+  odid,
+  flags,
+  data
+FROM cards 
+WHERE usn = -1 

@@ -1,0 +1,7 @@
+host="0.0.0.0"
+port = "27701"
+data_root = "./collections"
+base_url = "/sync/"
+base_media_url = "/msync/"
+auth_db_path = "./auth.db"
+session_db_path = "./session.db"
