@@ -55,3 +55,8 @@ introduce ankisyncctl(account manager)
 
 create and edit readme
 
+generate Settings.toml when first run executable file
+
+create release file tar.gz,zip,exe,aarch64 executable,publish
+to termux 
+
