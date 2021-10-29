@@ -4,13 +4,13 @@ use ankisyncd::{
     session::SessionManager,
     sync::{favicon, sync_app, welcome},
 };
-use std::{path::Path,fs};
 use env_logger;
 use std::sync::Mutex;
+use std::{fs, path::Path};
 /// generate Setting.toml if not exist
 fn setting_exist() {
-    let p=Path::new("Settings.toml");
-    let content=r#"
+    let p = Path::new("Settings.toml");
+    let content = r#"
 host="0.0.0.0"
 port = "27701"
 data_root = "./collections"
@@ -28,7 +28,7 @@ password=""
 }
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-   setting_exist();
+    setting_exist();
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
     env_logger::init();
     //reference py ver open col

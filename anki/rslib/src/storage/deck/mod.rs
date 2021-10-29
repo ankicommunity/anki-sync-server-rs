@@ -185,7 +185,6 @@ impl SqliteStorage {
     }
 
     pub(crate) fn remove_deck(&self, did: DeckId) -> Result<()> {
-       println!("reach here remove_deck");
         self.db
             .prepare_cached("delete from decks where id = ?")?
             .execute([did])?;

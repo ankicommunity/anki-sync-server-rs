@@ -10,12 +10,12 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
     backend_proto::sync_server_method_request::Method,
-    collection::open_collection,
+    collection::{open_collection, Collection},
     i18n::I18n,
     media::sync::{
         slog::{self, o},
-        zip, BufWriter, Bytes, FinalizeRequest, FinalizeResponse, RecordBatchRequest,
-        SyncBeginResponse, SyncBeginResult,
+        zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
+        SyncBeginResult,
     },
     storage::{card::row_to_card, note::row_to_note, revlog::row_to_revlog_entry},
     sync::http::SyncRequest,
@@ -31,6 +31,7 @@ use rusqlite::params;
 use std::{
     io::{self, BufReader},
     sync::Arc,
+    thread,
 };
 
 use crate::session::Session;
@@ -44,27 +45,60 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
-static  OPERATIONS: [&'static str;12] = [
-        "hostKey",
-        "meta",
-        "upload",
-        "download",
-        "applyChanges",
-        "start",
-        "applyGraves",
-        "chunk",
-        "applyChunk",
-        "sanityCheck2",
-        "finish",
-        "abort",
-    ];
-  static    MOPERATIONS :[&'static str;5]= [
-        "begin",
-        "mediaChanges",
-        "mediaSanity",
-        "uploadChanges",
-        "downloadFiles",
-    ];
+static OPERATIONS: [&'static str; 12] = [
+    "hostKey",
+    "meta",
+    "upload",
+    "download",
+    "applyChanges",
+    "start",
+    "applyGraves",
+    "chunk",
+    "applyChunk",
+    "sanityCheck2",
+    "finish",
+    "abort",
+];
+static MOPERATIONS: [&'static str; 5] = [
+    "begin",
+    "mediaChanges",
+    "mediaSanity",
+    "uploadChanges",
+    "downloadFiles",
+];
+async fn chunk(col: &Collection) -> Chunk {
+    let mut chunk = Chunk::default();
+    let conn = &col.storage.db;
+    let server_usn = col.usn().unwrap().0;
+    let mut stmt = conn.prepare(include_str!("get_review.sql")).unwrap();
+    let mut rs = stmt.query(params![server_usn]).unwrap();
+    while let Some(r) = rs.next().transpose() {
+        let rev = row_to_revlog_entry(r.unwrap()).unwrap();
+        chunk.revlog.push(rev);
+    }
+    let sql1 = "update revlog set usn=? where usn=-1";
+    conn.execute(sql1, params![server_usn]).unwrap();
+
+    let mut stmt = conn.prepare(include_str!("get_card.sql")).unwrap();
+    let mut rs = stmt.query(params![server_usn]).unwrap();
+    while let Some(r) = rs.next().transpose() {
+        let card = row_to_card(r.unwrap()).unwrap().into();
+        chunk.cards.push(card);
+    }
+    let sql2 = "update cards set usn=? where usn=-1";
+    conn.execute(sql2, params![server_usn]).unwrap();
+
+    let mut stmt = conn.prepare(include_str!("get_note.sql")).unwrap();
+    let mut rs = stmt.query(params![server_usn]).unwrap();
+    while let Some(r) = rs.next().transpose() {
+        let note = row_to_note(r.unwrap()).unwrap().into();
+        chunk.notes.push(note);
+    }
+    let sql3 = "update notes set usn=? where usn=-1";
+    conn.execute(sql3, params![server_usn]).unwrap();
+    chunk.done = true;
+    chunk
+}
 fn gen_hostkey(username: &str) -> String {
     let mut rng = thread_rng();
     let rand_alphnumr: String = (&mut rng)
@@ -148,7 +182,7 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
+async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
@@ -229,7 +263,10 @@ fn map_sync_req(method: &str) -> Option<Method> {
 }
 /// get hkey from client req bytes if there exist;
 /// if not ,get skey ,then get session
-pub fn get_session(session_manager:&web::Data<Mutex<SessionManager>>,map:HashMap<String,Vec<u8>>)->(Option<Session>,Option<String> ){
+pub fn get_session(
+    session_manager: &web::Data<Mutex<SessionManager>>,
+    map: HashMap<String, Vec<u8>>,
+) -> (Option<Session>, Option<String>) {
     let hkey = if let Some(hk) = map.get("k") {
         let hkey = String::from_utf8(hk.to_owned()).unwrap();
         Some(hkey)
@@ -237,7 +274,7 @@ pub fn get_session(session_manager:&web::Data<Mutex<SessionManager>>,map:HashMap
         None
     };
 
-   let s=  if let Some(hkey) = &hkey {
+    let s = if let Some(hkey) = &hkey {
         let s = session_manager.lock().unwrap().load(&hkey);
         s
         //    http forbidden if seesion is NOne ?
@@ -256,7 +293,7 @@ pub fn get_session(session_manager:&web::Data<Mutex<SessionManager>>,map:HashMap
             None
         }
     };
-    (s,hkey)
+    (s, hkey)
 }
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
@@ -285,8 +322,8 @@ pub async fn sync_app(
     };
 
     // add session
-    
-let (sn,hkey)=get_session(&session_manager, map);
+
+    let (sn, hkey) = get_session(&session_manager, map);
     let tr = I18n::template_only();
 
     match name.as_str() {
@@ -296,6 +333,8 @@ let (sn,hkey)=get_session(&session_manager, map);
 
             let mtd = map_sync_req(o);
             let data = if mtd == Some(Method::FullUpload) {
+                //   write data from client to file ,as its db data,and return
+                // its path in bytes
                 let session = sn.clone().unwrap();
                 let colpath = format!("{}.tmp", session.get_col_path().display());
                 let colp = Path::new(&colpath);
@@ -371,42 +410,15 @@ let (sn,hkey)=get_session(&session_manager, map);
                             server.server_usn = Usn {
                                 0: sn.unwrap().server_usn,
                             };
+                            server.col.storage.begin_trx().unwrap();
                             server.apply_graves(u.chunk).await.unwrap();
+                            server.col.storage.commit_trx().unwrap();
+
                             return Ok(HttpResponse::Ok().body("null"));
                         }
                         SyncRequest::Chunk => {
                             let z = backend.col_into_server().unwrap().into_col();
-                            let server_usn = z.usn().unwrap().0;
-                            let mut chunk = Chunk::default();
-                            let conn = z.storage.db;
-
-                            let mut stmt = conn.prepare(include_str!("get_review.sql")).unwrap();
-                            let mut rs = stmt.query(params![server_usn]).unwrap();
-                            while let Some(r) = rs.next().transpose() {
-                                let rev = row_to_revlog_entry(r.unwrap()).unwrap();
-                                chunk.revlog.push(rev);
-                            }
-                            let sql1 = "update revlog set usn=? where usn=-1";
-                            conn.execute(sql1, params![server_usn]).unwrap();
-
-                            let mut stmt = conn.prepare(include_str!("get_card.sql")).unwrap();
-                            let mut rs = stmt.query(params![server_usn]).unwrap();
-                            while let Some(r) = rs.next().transpose() {
-                                let card = row_to_card(r.unwrap()).unwrap().into();
-                                chunk.cards.push(card);
-                            }
-                            let sql2 = "update cards set usn=? where usn=-1";
-                            conn.execute(sql2, params![server_usn]).unwrap();
-
-                            let mut stmt = conn.prepare(include_str!("get_note.sql")).unwrap();
-                            let mut rs = stmt.query(params![server_usn]).unwrap();
-                            while let Some(r) = rs.next().transpose() {
-                                let note = row_to_note(r.unwrap()).unwrap().into();
-                                chunk.notes.push(note);
-                            }
-                            let sql3 = "update notes set usn=? where usn=-1";
-                            conn.execute(sql3, params![server_usn]).unwrap();
-                            chunk.done = true;
+                            let chunk = chunk(&z).await;
                             return Ok(HttpResponse::Ok().json(chunk));
                         }
                         SyncRequest::ApplyChunk(u) => {
@@ -474,7 +486,8 @@ let (sn,hkey)=get_session(&session_manager, map);
                     return Ok(HttpResponse::Ok().json(sbr));
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) = adopt_media_changes_from_zip(&mm, data.unwrap());
+                    let (procs_cnt, lastusn) =
+                        adopt_media_changes_from_zip(&mm, data.unwrap()).await;
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {
                         data: Some(vec![procs_cnt, lastusn as usize]),

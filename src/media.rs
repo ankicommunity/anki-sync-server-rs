@@ -3,7 +3,7 @@ use rusqlite::{params, Connection, Result};
 use crate::db::{fetchone, open_or_create};
 use anki::media::{
     files::{add_data_to_folder_uniquely, data_for_file, hex, normalize_filename, sha1_of_data},
-    sync::{unicode_normalization, zip, UploadEntry},
+    sync::{unicode_normalization, zip},
 };
 use serde_derive::{Deserialize, Serialize};
 use std::{
@@ -18,7 +18,7 @@ use std::{
 static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
 static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
 /// open zip from vec of u8
-fn open_zip(d: Vec<u8>) {
+fn _open_zip(d: Vec<u8>) {
     //    open zip on server
 
     let reader = io::Cursor::new(d.clone());
@@ -26,7 +26,7 @@ fn open_zip(d: Vec<u8>) {
     let mut meta_file = zip.by_name("_meta").unwrap();
     let mut v = vec![];
     meta_file.read_to_end(&mut v).unwrap();
-    let fmap: Vec<(String, Option<String>)> = serde_json::from_slice(&v).unwrap();
+    let _map: Vec<(String, Option<String>)> = serde_json::from_slice(&v).unwrap();
     drop(meta_file);
     for i in 0..zip.len() {
         let mut file = zip.by_index(i).unwrap();
@@ -116,7 +116,7 @@ impl MediaManager {
 
             if let Some(data) = &file_data {
                 let normalized = normalize_filename(&file);
-                if let Cow::Owned(o) = normalized {
+                if let Cow::Owned(_) = normalized {
                     invalid_entries.push(&file);
                     continue;
                 }
@@ -176,14 +176,13 @@ impl MediaManager {
         let diff_usn = self.last_usn() - last_usn;
         let mut stmt = self.db.prepare(sql).unwrap();
         let mut rs = stmt.query(params![diff_usn]).unwrap();
-        let mut v = vec![];
+        let mut v: Vec<(String, i32, String)> = vec![];
         while let Some(r) = rs.next().unwrap() {
-            let sr = MediaRecord {
-                fname: r.get(0).unwrap(),
-                usn: r.get(1).unwrap(),
-                sha1: r.get(2).map_or(String::new(), |e| e),
-            };
-            v.push((sr.fname, sr.usn, sr.sha1));
+            v.push((
+                r.get(0).unwrap(),
+                r.get(1).unwrap(),
+                r.get(2).map_or(String::new(), |e| e),
+            ));
         }
         v
     }
@@ -230,7 +229,7 @@ impl MediaManager {
         let normalized = normalize_filename(fname);
 
         // if the filename is already valid, we can write the file directly
-        let (renamed_from, path) = if let Cow::Borrowed(_) = normalized {
+        let (_renamed_from, _path) = if let Cow::Borrowed(_) = normalized {
             let path = media_folder.join(normalized.as_ref());
 
             fs::write(&path, data).unwrap();

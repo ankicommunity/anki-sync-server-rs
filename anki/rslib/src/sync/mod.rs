@@ -697,7 +697,7 @@ impl Collection {
         })
     }
 
-    pub fn apply_graves(&self, graves: Graves, latest_usn: Usn) -> Result<()> {
+    pub  fn apply_graves(&self, graves: Graves, latest_usn: Usn) -> Result<()> {
         for nid in graves.notes {
             self.storage.remove_note(nid)?;
             self.storage.add_note_grave(nid, latest_usn)?;

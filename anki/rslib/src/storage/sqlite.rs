@@ -251,12 +251,12 @@ impl SqliteStorage {
     // mechanism has been added to all existing functionality, we could
     // transition these to standard commits.
 
-    pub(crate) fn begin_rust_trx(&self) -> Result<()> {
+    pub fn begin_rust_trx(&self) -> Result<()> {
         self.db.prepare_cached("savepoint rust")?.execute([])?;
         Ok(())
     }
 
-    pub(crate) fn commit_rust_trx(&self) -> Result<()> {
+    pub fn commit_rust_trx(&self) -> Result<()> {
         self.db.prepare_cached("release rust")?.execute([])?;
         Ok(())
     }
