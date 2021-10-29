@@ -44,7 +44,27 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
-
+static  OPERATIONS: [&'static str;12] = [
+        "hostKey",
+        "meta",
+        "upload",
+        "download",
+        "applyChanges",
+        "start",
+        "applyGraves",
+        "chunk",
+        "applyChunk",
+        "sanityCheck2",
+        "finish",
+        "abort",
+    ];
+  static    MOPERATIONS :[&'static str;5]= [
+        "begin",
+        "mediaChanges",
+        "mediaSanity",
+        "uploadChanges",
+        "downloadFiles",
+    ];
 fn gen_hostkey(username: &str) -> String {
     let mut rng = thread_rng();
     let rand_alphnumr: String = (&mut rng)
@@ -207,11 +227,42 @@ fn map_sync_req(method: &str) -> Option<Method> {
         _ => None,
     }
 }
+/// get hkey from client req bytes if there exist;
+/// if not ,get skey ,then get session
+pub fn get_session(session_manager:&web::Data<Mutex<SessionManager>>,map:HashMap<String,Vec<u8>>)->(Option<Session>,Option<String> ){
+    let hkey = if let Some(hk) = map.get("k") {
+        let hkey = String::from_utf8(hk.to_owned()).unwrap();
+        Some(hkey)
+    } else {
+        None
+    };
+
+   let s=  if let Some(hkey) = &hkey {
+        let s = session_manager.lock().unwrap().load(&hkey);
+        s
+        //    http forbidden if seesion is NOne ?
+    } else {
+        if let Some(skv) = map.get("sk") {
+            let skey = String::from_utf8(skv.to_owned()).unwrap();
+
+            Some(
+                session_manager
+                    .lock()
+                    .unwrap()
+                    .load_from_skey(&skey)
+                    .unwrap(),
+            )
+        } else {
+            None
+        }
+    };
+    (s,hkey)
+}
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     payload: Multipart,
     req: HttpRequest,
-    web::Path((url, name)): web::Path<(String, String)>,
+    web::Path((_, name)): web::Path<(String, String)>,
 ) -> Result<HttpResponse> {
     let method = req.method().as_str();
     let mut map = HashMap::new();
@@ -234,60 +285,13 @@ pub async fn sync_app(
     };
 
     // add session
-    let operations = [
-        "hostKey",
-        "meta",
-        "upload",
-        "download",
-        "applyChanges",
-        "start",
-        "applyGraves",
-        "chunk",
-        "applyChunk",
-        "sanityCheck2",
-        "finish",
-        "abort",
-    ];
-    let moperations = [
-        "begin",
-        "mediaChanges",
-        "mediaSanity",
-        "uploadChanges",
-        "downloadFiles",
-    ];
-
-    let hkey = if let Some(hk) = map.get("k") {
-        let hkey = String::from_utf8(hk.to_owned()).unwrap();
-        Some(hkey)
-    } else {
-        None
-    };
-
-    let sn = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().unwrap().load(&hkey);
-        s
-        //    http forbidden if seesion is NOne ?
-    } else {
-        if let Some(skv) = map.get("sk") {
-            let skey = String::from_utf8(skv.to_owned()).unwrap();
-
-            Some(
-                session_manager
-                    .lock()
-                    .unwrap()
-                    .load_from_skey(&skey)
-                    .unwrap(),
-            )
-        } else {
-            None
-        }
-    };
-
+    
+let (sn,hkey)=get_session(&session_manager, map);
     let tr = I18n::template_only();
 
     match name.as_str() {
         // all normal sync url eg chunk..
-        o if operations.contains(&o) => {
+        o if OPERATIONS.contains(&o) => {
             // create a new server obj
 
             let mtd = map_sync_req(o);
@@ -451,7 +455,7 @@ pub async fn sync_app(
             }
         }
         // media sync
-        m if moperations.contains(&m) => {
+        m if MOPERATIONS.contains(&m) => {
             // session None is forbidden
             let session = sn.clone().unwrap();
             let (md, mf) = session.get_md_mf();

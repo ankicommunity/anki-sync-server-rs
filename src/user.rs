@@ -32,11 +32,10 @@ fn set_password_for_user(username: &str, new_password: &str) -> rusqlite::Result
 }
 
 fn create_user_dir(username: &str) -> io::Result<()> {
-    if !path_exists("collections").unwrap() {
-        fs::create_dir("collections").unwrap();
-    }
     let path = Path::new("collections").join(username);
-    fs::create_dir(path).unwrap();
+   if !path.exists() {
+       fs::create_dir_all(path).unwrap();
+   }
 
     Ok(())
 }

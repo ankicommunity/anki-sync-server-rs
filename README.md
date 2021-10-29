@@ -1,8 +1,6 @@
 This one is taken as an anki-sync-server implementation in Rust
 of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server).
-
 <br>
-
 should work at least on Anki 2.1.40 and above,others needs testing. 
 
 ## Install 
@@ -18,15 +16,16 @@ Currently,only Windows are supported.
 
 
 ### build from source
-1.make sure Rust and its toolchains are installed.
+1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
-2.open terminal,clone github repo.
+2. open terminal,clone github repo.
 `git clone https://github.com/dobefore/anki-sync-server-rs.git `
-3.run build command
+3. run build command
 `cargo build --release`
 ## Setting up Anki
 
 #### Anki 2.1(install add from ankiweb)
+Tools -> Add-ons
 
 1. on add-on window,click `Get Add-ons` and fill in the textbox with the code  `358444159`
 

@@ -108,7 +108,7 @@ impl MediaManager {
 
             let file_data = match data_for_file(media_folder, &file) {
                 Ok(data) => data,
-                Err(e) => {
+                Err(_) => {
                     invalid_entries.push(file);
                     continue;
                 }

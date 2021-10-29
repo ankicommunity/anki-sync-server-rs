@@ -24,6 +24,7 @@ pub struct Session {
     pub client_newer: bool,
     pub server_usn: i32,
 }
+
 impl Session {
     pub fn skey(&self) -> String {
         self.skey.as_ref().unwrap().to_owned()
