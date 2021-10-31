@@ -182,7 +182,7 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
+ fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
@@ -487,7 +487,7 @@ pub async fn sync_app(
                 }
                 "uploadChanges" => {
                     let (procs_cnt, lastusn) =
-                        adopt_media_changes_from_zip(&mm, data.unwrap()).await;
+                        adopt_media_changes_from_zip(&mm, data.unwrap());
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {
                         data: Some(vec![procs_cnt, lastusn as usize]),

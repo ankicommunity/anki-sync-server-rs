@@ -60,3 +60,7 @@ generate Settings.toml when first run executable file
 create release file tar.gz,zip,exe,aarch64 executable,publish
 to termux 
 
+msync/uploadChanges pretty slow ?
+
+integrate ankisyncctl into ankisyncd  ?
+
