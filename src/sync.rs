@@ -182,7 +182,7 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
- fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
+async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
@@ -212,7 +212,6 @@ pub async fn welcome() -> Result<HttpResponse> {
     }
 
     drop(meta_file);
-
     let mut usn = mm.last_usn();
     fs::create_dir_all(&media_dir).unwrap();
     for i in 0..zip.len() {
@@ -228,7 +227,7 @@ pub async fn welcome() -> Result<HttpResponse> {
         file.read_to_end(&mut data).unwrap();
         //    write zip data to media folder
         usn += 1;
-        let add = mm.add_file(&real_name, &data, usn);
+        let add = mm.add_file(&real_name, &data, usn).await;
 
         media_to_add.push(add);
     }
@@ -487,7 +486,8 @@ pub async fn sync_app(
                 }
                 "uploadChanges" => {
                     let (procs_cnt, lastusn) =
-                        adopt_media_changes_from_zip(&mm, data.unwrap());
+                        adopt_media_changes_from_zip(&mm, data.unwrap()).await;
+
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {
                         data: Some(vec![procs_cnt, lastusn as usize]),

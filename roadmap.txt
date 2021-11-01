@@ -3,6 +3,7 @@ parse ankisyncd.conf
 how to compile rslib sucessfully
 1.put anki-sync-server-rs in dir anki-,in its dep toml ,anki={path="../rslib"}
 2.put anki-sync-server-rs in anki- cargo.toml field workspace
+put anki entirely into project as an crate and use rslib 
 
 work around /meta
 reference examples/basics/middleware
@@ -61,6 +62,8 @@ create release file tar.gz,zip,exe,aarch64 executable,publish
 to termux 
 
 msync/uploadChanges pretty slow ?
+1.seems ankidroid is processing data during the delay
+and it has almost equal speed between rust and py impl
 
 integrate ankisyncctl into ankisyncd  ?
 

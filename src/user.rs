@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::Path;
 fn path_exists(path: &str) -> io::Result<bool> {
     Ok(Path::new(path).exists())
@@ -78,6 +79,78 @@ pub fn create_auth_db() -> io::Result<()> {
     conn.close().unwrap();
 
     Ok(())
+}
+/// into a vec
+fn read_args_from_cmd() -> Vec<String> {
+    let mut s = String::new();
+    io::stdin().read_line(&mut s).unwrap();
+    let args = s.trim()
+        .split_ascii_whitespace()
+        .into_iter()
+        .map(|r| r.to_string())
+        .collect::<Vec<_>>();
+    args
+}
+/// command-line user management,ie add user
+pub fn user_manage() {
+    println!("1) add user");
+    println!("2) delete user");
+    println!("3) change user password");
+    println!("4) show existing users");
+    print!("your choice?");
+    io::stdout().flush().unwrap();
+    let mut out = String::new();
+    io::stdin().read_line(&mut out).unwrap();
+    match out.trim() {
+        "1" => {
+            // add user
+            // notice if user already exists
+            println!("input username and password,separate by whitespace, ie: user pass");
+            print!("your input?");
+            io::stdout().flush().unwrap();
+            let args = read_args_from_cmd();
+            if args.len() == 2 {
+                add_user(&args).unwrap();
+            } else {
+                panic!("error input format")
+            }
+        }
+        "2" => {
+            // delete user
+            println!("input to-be-deleted user ,multi users available,separated by whitespace,ie: user1 user2");
+            print!("your input?");
+            io::stdout().flush().unwrap();
+            let args = read_args_from_cmd();
+            for u in args {
+                del_user(&u).unwrap();
+            }
+        }
+        "3" => {
+            // change user password
+            println!("input username and to-be-changed password,separate by whitespace, ie: user newpass");
+            print!("your input?");
+            io::stdout().flush().unwrap();
+            let args = read_args_from_cmd();
+            if args.len() == 2 {
+                passwd(&args).unwrap();
+            } else {
+                panic!("error input len")
+            }
+        }
+        "4" => {
+            // show existing users
+            println!("existing users are as follows");
+            let user_list = user_list().unwrap();
+            if let Some(v) = user_list {
+                for i in v {
+                    println!("{}", i)
+                }
+            } else {
+                println!()
+            }
+        }
+        _ => {}
+    }
 }
 pub fn user_list() -> io::Result<Option<Vec<String>>> {
     let sql = "SELECT username FROM auth";

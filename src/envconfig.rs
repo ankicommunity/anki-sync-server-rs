@@ -27,6 +27,8 @@ pub fn env_variables() -> HashMap<String, String> {
         .merge(Environment::with_prefix("auth"))
         .unwrap()
         .merge(Environment::with_prefix("session"))
+        .unwrap()
+        .merge(Environment::with_prefix("user"))
         .unwrap();
 
     settings.try_into::<HashMap<String, String>>().unwrap()

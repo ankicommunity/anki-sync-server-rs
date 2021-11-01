@@ -213,7 +213,7 @@ impl MediaManager {
     pub fn delete(&self, rms: &[String]) {
         for i in rms {
             let fpath = self.media_folder.join(i);
-            println!("fpath.exists {}", &fpath.exists());
+
             if fpath.exists() {
                 fs::remove_file(fpath).unwrap();
             }
@@ -223,7 +223,7 @@ impl MediaManager {
         }
     }
     /// write zip data to media folder
-    pub fn add_file(&self, fname: &str, data: &[u8], usn: i32) -> MediaRecord {
+    pub async fn add_file(&self, fname: &str, data: &[u8], usn: i32) -> MediaRecord {
         let media_folder = &self.media_folder;
         let sha1 = sha1_of_data(data);
         let normalized = normalize_filename(fname);
@@ -232,7 +232,7 @@ impl MediaManager {
         let (_renamed_from, _path) = if let Cow::Borrowed(_) = normalized {
             let path = media_folder.join(normalized.as_ref());
 
-            fs::write(&path, data).unwrap();
+            async_std::fs::write(&path, data).await.unwrap();
             (None, path)
         } else {
             // ankiweb sent us a non-normalized filename, so we'll rename it

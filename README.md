@@ -41,13 +41,23 @@ Unless you have set up a reverse proxy to handle encrypted connections, use `htt
 
 Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url`.
 
-Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncctl.py adduser`.
+Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncctl.exe adduser`.
 
 ## Account Management
 
-#### example demo
+#### option1
 
-create user account
+enter into ankisyncd account management
+
+`ankisyncd.exe U`
+
+and then followning the instructions
+
+#### option2
+
+use separate command line tool `ankisyncctl.exe` 
+
+ie:create user account
 
 `ankisyncctl.exe adduser zhigufei password`
 
@@ -57,11 +67,11 @@ more operations can be found by query help
 
 ### TODO
 
-- [ ] add ssl certificate verify
+- [ ] allow self-signed certificate used in https in Intranet environment
 
 - [ ] error handle
 - [ ] anki versions test
-- [ ]  automatically add user account into auth ab when account
+- [x]  automatically add user account into auth ab when account
   is not empty in Settings.toml
 - [ ]  add shell script for  build from source on linux and windows
 - [ ]  make deb for linux
