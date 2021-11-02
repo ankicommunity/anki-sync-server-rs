@@ -6,12 +6,12 @@ should work at least on Anki 2.1.40 and above,others needs testing.
 ## Install 
 
 ### run from built binary package
-Currently,only Windows are supported.
+Currently,only Windows are supported.download from releases.
 
 | binary file | usage                                  |
 | ----------- | -------------------------------------- |
 | ankisyncctl | user account manage,eg add/delete user |
-| ankisyncd   | anki sync server ,sync data and media  |
+| ankisyncd   | anki sync server   |
 
 
 
@@ -74,7 +74,7 @@ more operations can be found by query help
 - [x]  automatically add user account into auth ab when account
   is not empty in Settings.toml
 - [ ]  add shell script for  build from source on linux and windows
-- [ ]  make deb for linux
+- [ ]  builds for Linux and MacOs
 
 ### REFERENCE
 ankisyncd architecture or apis depend on [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) and
