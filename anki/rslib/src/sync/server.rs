@@ -100,7 +100,7 @@ impl SyncServer for LocalServer {
         deprecated_client_graves: Option<Graves>,
     ) -> Result<Graves> {
         self.server_usn = self.col.usn()?;
-        println!(" start server_usn {:?}",&self.server_usn);
+      
         self.client_usn = client_usn;
         self.client_is_newer = client_is_newer;
         self.col.discard_undo_and_study_queues();
@@ -113,7 +113,6 @@ impl SyncServer for LocalServer {
         // fetch local graves
         let server_graves = self.col.storage.pending_graves(client_usn)?;
         // handle AnkiDroid using old protocol
-        println!("start {:?}",deprecated_client_graves);
         if let Some(graves) = deprecated_client_graves {
             self.col.apply_graves(graves, self.server_usn)?;
         }
@@ -129,7 +128,6 @@ impl SyncServer for LocalServer {
         &mut self,
         client_changes: UnchunkedChanges,
     ) -> Result<UnchunkedChanges> {
-        println!(" apply_changes server_usn {:?}",&self.server_usn);
         let server_changes =
             self.col
                 .local_unchunked_changes(self.client_usn, None, !self.client_is_newer)?;
@@ -147,7 +145,6 @@ impl SyncServer for LocalServer {
     }
 
     async fn apply_chunk(&mut self, client_chunk: Chunk) -> Result<()> {
-       println!("apply_chunk {:?}",self.client_usn);
         self.col.apply_chunk(client_chunk, self.client_usn)
     }
 
@@ -159,8 +156,6 @@ impl SyncServer for LocalServer {
         // the minimum syncing version is schema 18.
         client.graves = 0;
         server.graves = 0;
-        println!("client {:?}",client);
-        println!("server {:?}",server);
         Ok(SanityCheckResponse {
             status: if client == server {
                 SanityCheckStatus::Ok

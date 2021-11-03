@@ -1,7 +1,12 @@
+mod db;
+pub mod envconfig;
+mod media;
+pub mod session;
+pub mod sync;
+pub mod user;
 use crate::envconfig::env_variables;
 use actix_web::{middleware, web, App, HttpServer};
-use ankisyncd::{
-    envconfig,
+ use self::{
     session::SessionManager,
     sync::{favicon, sync_app, welcome},
     user::{add_user, create_auth_db, user_list, user_manage},

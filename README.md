@@ -1,7 +1,6 @@
 This one is taken as an anki-sync-server implementation in Rust
 of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server).
 <br>
-should work at least on Anki 2.1.40 and above,others needs testing. 
 
 ## Install 
 
@@ -68,13 +67,15 @@ more operations can be found by query help
 ### TODO
 
 - [ ] allow self-signed certificate used in https in Intranet environment
-
 - [ ] error handle
-- [ ] anki versions test
+- [x] anki versions test
 - [x]  automatically add user account into auth ab when account
   is not empty in Settings.toml
-- [ ]  add shell script for  build from source on linux and windows
-- [ ]  builds for Linux and MacOs
+- [ ]  builds for Linux and MacOS
+### Compatibility
+|tested anki versions|2.1.15,2.1.28,2.1.35,2.1.50|
+|----|----|
+|tested process| import a collection of decks and upload to server|
 
 ### REFERENCE
 ankisyncd architecture or apis depend on [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) and
