@@ -66,4 +66,6 @@ msync/uploadChanges pretty slow ?
 and it has almost equal speed between rust and py impl
 
 integrate ankisyncctl into ankisyncd  ?
+1.use U flag to acess ankisyncctl
 
+add embeded cert https based on rustls

@@ -6,7 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "3"
+rustls = "0.18"
+actix-web = { version = "3", features = ["rustls"] }
 actix-multipart = "0.3"
 async-std = "1.8"
 futures-util = "0.3"
