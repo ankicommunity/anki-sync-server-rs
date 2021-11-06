@@ -13,7 +13,7 @@ Then,double click `ankisyncd.exe` to get started.
 #### LInux
 ##### x86_64
 Warn:need testing if it's working on other computers,as this build
-seems a dynamically linked bibary
+seems a dynamically linked binary
 - decompression
 `tar -zxvf ankisyncd_linux_x86_64.tar.gz`
 - probably,create an account first following instructions
@@ -54,7 +54,18 @@ Unless you have set up a reverse proxy to handle encrypted connections, use `htt
 Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url`.
 
 Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncctl.exe adduser`.
-
+#### secure HTTP connection
+Due to Ankidroid policy change,some ankidroid versions need
+https transportation.Ankisyncd allow embeded self-signed certicate verify
+used in Intranet environment.open `Settings.toml` with text
+editor,modify following lines:
+```
+#make ssl_enable true
+ssl_enable="false"
+# put cert and key file path 
+cert_file=""
+key_file=""
+```
 ## Account Management
 
 #### option1
