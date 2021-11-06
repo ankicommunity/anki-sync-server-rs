@@ -5,15 +5,28 @@ of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-
 ## Install 
 
 ### run from built binary package
-Currently,only Windows are supported.download from releases.
-
-| binary file | usage                                  |
-| ----------- | -------------------------------------- |
-| ankisyncctl | user account manage,eg add/delete user |
-| ankisyncd   | anki sync server   |
-
-
-
+download executables from releases
+#### Windows(x86_64)
+After decompression,an account is required,following instructions
+below on how to create an account.
+Then,double click `ankisyncd.exe` to get started.
+#### LInux
+##### x86_64
+Warn:need testing if it's working on other computers,as this build
+seems a dynamically linked bibary
+- decompression
+`tar -zxvf ankisyncd_linux_x86_64.tar.gz`
+- probably,create an account first following instructions
+below.
+- run
+`./ankisyncd`
+##### aarch64
+- decompression
+`tar -zxvf ankisyncd_aarch64.tar.gz`
+- probably,create an account first following instructions
+below.
+- run
+`./ankisyncd`
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
@@ -66,7 +79,7 @@ more operations can be found by query help
 
 ### TODO
 
-- [ ] allow self-signed certificate used in https in Intranet environment
+- [x] allow self-signed certificate used in https in Intranet environment
 - [ ] error handle
 - [x] anki versions test
 - [x]  automatically add user account into auth ab when account
