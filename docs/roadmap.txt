@@ -69,3 +69,18 @@ integrate ankisyncctl into ankisyncd  ?
 1.use U flag to acess ankisyncctl
 
 add embeded cert https based on rustls
+1.ok
+
+build for linux x86_64 and aarch64
+1.x86_64:sucessfully build using musl-gcc,dynamically linked
+openssl made build from c source using musl-gcc
+2.try to corss-compile for aarch64,as ring is not able to be 
+compiled. use openssl made on raspberry with gnu-gcc,failed
+3.try to corss-compile for aarch64,use openssl make on x86_64
+,openssl cross-compiled sucessfully ,yet build failed
+4.use musl to compile openssl for x86_64,and cross-compile:failed,
+adding symbols: file in wrong format
+5.use musl-gcc to  corss-compile openssl for aarch64 in another
+way,then build :sucessfully build staticly linked binaries
+6.use musl-gcc to compile openssl for x86_64, and build:cannot
+build staticly linked binary
