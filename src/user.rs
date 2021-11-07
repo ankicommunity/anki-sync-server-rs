@@ -4,14 +4,12 @@ use anki::sync::http::HostKeyRequest;
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
+#[allow(unused_imports)]
 use std::env;
 use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::Path;
-fn path_exists(path: &str) -> io::Result<bool> {
-    Ok(Path::new(path).exists())
-}
 fn create_salt() -> String {
     // create salt
     let mut key = [0u8; 8];

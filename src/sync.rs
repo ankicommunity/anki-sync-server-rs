@@ -10,7 +10,7 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
     backend_proto::sync_server_method_request::Method,
-    collection::{open_collection, Collection},
+    collection:: Collection,
     i18n::I18n,
     media::sync::{
         slog::{self, o},
@@ -29,9 +29,9 @@ use anki::{
 };
 use rusqlite::params;
 use std::{
-    io::{self, BufReader},
+    io,
     sync::Arc,
-    thread,
+ 
 };
 
 use crate::session::Session;
@@ -41,7 +41,7 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde_json;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
@@ -523,7 +523,7 @@ pub async fn sync_app(
                     return Ok(HttpResponse::Ok().json(d));
                 }
                 "downloadFiles" => {
-                    // client data
+                    // client data :requested filenames
                     // "{\"files\":[\"paste-ceaa6863ee1c4ee38ed1cd3a0a2719fa934517ed.jpg\",
                     // \"sapi5js-08c91aeb-d6ae72e4-fa3faf05-eff30d1f-581b71c8.mp3\",
                     // \"sapi5js-2750d034-14d4845f-b60dc87b-afb7197f-87930ab7.mp3\"]}
@@ -590,33 +590,5 @@ fn test_parse_qs() {
     println!("{:?}", url);
     println!("{:?}", query);
 }
-#[test]
-fn test_zip_diserial() {
-    let zf = r"C:\Users\Admin\Desktop\qq\t.zip";
-    let file = fs::File::open(&zf).unwrap();
-    let reader = BufReader::new(file);
 
-    let mut archive = zip::ZipArchive::new(reader).unwrap();
-    let meta_file = archive.by_name("_meta").unwrap();
-    let fmap: HashMap<String, String> = serde_json::from_reader(meta_file).unwrap();
-    println!("{:?}", fmap);
-}
 
-#[test]
-fn test_db_lock() {
-    use anki::log;
-    let tr = I18n::template_only();
-    let backend = Backend::new(tr.clone(), true);
-
-    let p = r"D:\software\vscode_project\anki_sync\anki-\target\release\collections\ts";
-    let col_dir = Path::new(p);
-    let path = col_dir.join("collection.anki2");
-    let media_folder = col_dir.join("collection.media");
-    let media_db = col_dir.join("collection.media.server.db");
-    let col = open_collection(path, media_folder, media_db, true, tr, log::terminal()).unwrap();
-    *backend.col.lock().unwrap() = Some(col);
-    let c = backend.col_into_server().unwrap().into_col();
-    let m = &c.media_db;
-    let me = &c.media_folder;
-    println!("{:?}{:?}", m.display(), &me.display());
-}

@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection, Result};
 
 use crate::db::{fetchone, open_or_create};
+#[allow(unused_imports)]
 use anki::media::{
     files::{add_data_to_folder_uniquely, data_for_file, hex, normalize_filename, sha1_of_data},
     sync::{unicode_normalization, zip},

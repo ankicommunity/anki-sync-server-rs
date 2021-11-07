@@ -4,7 +4,7 @@
 use std::{collections::HashMap, path::Path};
 
 use rusqlite::{params, Connection, OptionalExtension, Row, Statement};
- use serde_derive::{Deserialize, Serialize};
+ use serde_derive::Deserialize;
 use crate::error::Result;
 
 fn trace(s: &str) {

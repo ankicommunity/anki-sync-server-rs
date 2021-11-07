@@ -2,7 +2,7 @@ use crate::envconfig::env_variables;
 use anki::collection::{open_collection, Collection};
 use anki::i18n::I18n;
 use anki::log;
-use rand::{thread_rng, Rng};
+use rand::{self, Rng};
 use rusqlite::Row;
 use rusqlite::{Connection, OptionalExtension, Result};
 use sha2::{Digest, Sha256};

@@ -1,4 +1,4 @@
-This one is taken as an anki-sync-server implementation in Rust
+This one is taken as a Rust version
 of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server).
 <br>
 
@@ -10,23 +10,24 @@ download executables from releases
 After decompression,an account is required,following instructions
 below on how to create an account.
 Then,double click `ankisyncd.exe` to get started.
-#### LInux
-##### x86_64
-Warn:need testing if it's working on other computers,as this build
-seems a dynamically linked binary
-- decompression
-`tar -zxvf ankisyncd_linux_x86_64.tar.gz`
-- probably,create an account first following instructions
+#### Linux
+1. Fisrt of all,decompression,
+```
+tar -zxvf ankisyncd_xxx.tar.gz
+```
+2. create an account following instructions
 below.
-- run
+3. run from terminal,
+```
 `./ankisyncd`
-##### aarch64
-- decompression
-`tar -zxvf ankisyncd_aarch64.tar.gz`
-- probably,create an account first following instructions
-below.
-- run
-`./ankisyncd`
+```
+Currently supported Linux platforms
+|machine|ENV|
+|----|----|
+|x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
+|aarch64|cross-compiled on wsl2,tested on ubuntu aarch64 and termux|
+
+
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
@@ -36,28 +37,28 @@ follow [this link](https://www.rust-lang.org/tools/install) using rustup to inst
 `cargo build --release`
 ## Setting up Anki
 
-#### Anki 2.1(install add from ankiweb)
+#### Anki 2.1(install add-on from ankiweb)
 Tools -> Add-ons
 
 1. on add-on window,click `Get Add-ons` and fill in the textbox with the code  `358444159`
 
 2. there,you get add-on `custom sync server redirector`,choose it.Then click `config`  below right
 
-3. apply your server ip address 
+3. apply your server ip address ,restart Anki
 
 #### AnkiDroid
 
 Advanced → Custom sync server
 
-Unless you have set up a reverse proxy to handle encrypted connections, use `http` as the protocol. The port will be either the default, 27701, or whatever you have specified in `ankisyncd.conf` (or, if using a reverse proxy, whatever port you configured to accept the front-end connection).
+Unless you have set up a reverse proxy to handle encrypted connections, use `http` as the protocol. The port will be either the default, 27701, or whatever you have specified in `Settings.toml` (or, if using a reverse proxy, whatever port you configured to accept the front-end connection).
 
 Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url`.
 
 Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncctl.exe adduser`.
-#### secure HTTP connection
-Due to Ankidroid policy change,some ankidroid versions need
+#### encrypted HTTP connection
+Due to Android policy change,some ankidroid versions need
 https transportation.Ankisyncd allow embeded self-signed certicate verify
-used in Intranet environment.open `Settings.toml` with text
+used in LAN environment.open `Settings.toml` with text
 editor,modify following lines:
 ```
 #make ssl_enable true
@@ -74,7 +75,7 @@ enter into ankisyncd account management
 
 `ankisyncd.exe U`
 
-and then followning the instructions
+and then follow the instructions
 
 #### option2
 
@@ -82,9 +83,11 @@ use separate command line tool `ankisyncctl.exe`
 
 ie:create user account
 
-`ankisyncctl.exe adduser zhigufei password`
+```
+ankisyncctl.exe adduser rumengling liqingzhao
+```
 
-more operations can be found by query help
+more operations can be found by querying help
 
 `ankisyncctl -h`
 
@@ -93,7 +96,7 @@ more operations can be found by query help
 - [x] allow self-signed certificate used in https in Intranet environment
 - [ ] error handle
 - [x] anki versions test
-- [x]  automatically add user account into auth ab when account
+- [x]  automatically add user account into auth db when account
   is not empty in Settings.toml
 - [ ]  builds for Linux and MacOS
 ### Compatibility
