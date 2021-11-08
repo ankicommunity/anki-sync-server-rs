@@ -25,8 +25,8 @@ Currently supported Linux platforms
 |machine|ENV|
 |----|----|
 |x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
-|aarch64|cross-compiled on wsl2,tested on ubuntu aarch64 and termux|
-
+|aarch64|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
+|armv7(arm32)|cross-compiled on wsl2(ubuntu)|
 
 ### build from source
 1. make sure Rust and its toolchains are installed.
