@@ -6,7 +6,7 @@ of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-
 
 ### run from built binary package
 download executables from releases
-#### Windows(x86_64)
+#### Windows(x86_64/i686)
 After decompression,an account is required,following instructions
 below on how to create an account.
 Then,double click `ankisyncd.exe` to get started.
@@ -25,16 +25,14 @@ Currently supported Linux platforms
 |machine|ENV|
 |----|----|
 |x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
-|aarch64|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
+|aarch64(arm64)|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
 |armv7(arm32)|cross-compiled on wsl2(ubuntu)|
 
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
-2. open terminal,clone github repo.
-`git clone https://github.com/dobefore/anki-sync-server-rs.git `
 3. run build command
-`cargo build --release`
+`cargo install ankisyncd`
 ## Setting up Anki
 
 #### Anki 2.1(install add-on from ankiweb)
@@ -99,6 +97,8 @@ more operations can be found by querying help
 - [x]  automatically add user account into auth db when account
   is not empty in Settings.toml
 - [ ]  builds for Linux and MacOS
+- [ ]  fix log time incorrect
+- [ ]  add github repo address
 ### Compatibility
 |tested anki versions|2.1.15,2.1.28,2.1.35,2.1.50|
 |----|----|

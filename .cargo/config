@@ -1,0 +1,24 @@
+[target.i686-pc-windows-msvc]
+linker = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\link.exe"
+# Linux
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-musl-gcc"
+rustflags = ["-C", "target-feature=+crt-static",
+ "-C", "link-args=-static"]
+
+[target.armv7-unknown-linux-musleabihf]
+linker = "arm-linux-musleabihf-gcc"
+rustflags  = [
+  "-C", "target-feature=+crt-static",
+    "-C", "link-args=-static",
+]
+
+[target.x86_64-unknown-linux-musl]
+linker = "x86_64-linux-musl-gcc"
+rustflags = ["-C", "target-feature=+crt-static",
+ "-C", "link-args=-static",]
+
+#for cmd line use
+#[net]
+#retry = 2 # 失败 自动重试 次数
+#git-fetch-with-cli = true

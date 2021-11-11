@@ -1,8 +1,13 @@
 [package]
 name = "ankisyncd"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2018"
-
+license = "AGPL-3.0-or-later"
+documentation = "https://docs.rs/ankisyncd/"
+readme = "README.md"
+description="a person custom Anki(flash cards app) sync server"
+keywords = ["Anki","actix-web","server"]
+repository = "https://github.com/ankicommunity/anki-sync-server-rs.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
