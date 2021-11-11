@@ -31,8 +31,8 @@ Currently supported Linux platforms
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
-3. run build command
-`cargo install ankisyncd`
+2. clone our repo and enter into the folder, run build command
+`cargo build --release`
 ## Setting up Anki
 
 #### Anki 2.1(install add-on from ankiweb)
