@@ -28,7 +28,7 @@ sha2 = "0.9.5"
 md5 = "0.7.0"
 urlparse = "0.7.3"
 hex = "0.4.3"
-anki={version="0.1.2",path="anki/rslib"}
+anki={version="0.1.2",path="src/anki/rslib"}
 [dependencies.rusqlite]
 version = "0.25.1"
 features = ["bundled"]
