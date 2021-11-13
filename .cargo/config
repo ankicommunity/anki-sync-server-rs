@@ -1,3 +1,5 @@
+#this file is for cross-compiling's use
+
 [target.i686-pc-windows-msvc]
 linker = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\link.exe"
 # Linux

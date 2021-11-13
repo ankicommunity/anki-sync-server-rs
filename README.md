@@ -27,8 +27,12 @@ Currently supported Linux platforms
 |x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
 |aarch64(arm64)|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
 |armv7(arm32)|cross-compiled on wsl2(ubuntu)|
+#### MacOS(x86_64,need testing)
+After decompression,an account is required,following instructions
+below on how to create an account.
 ### containerized build (docker) and run
-more see [containerized build](https://github.com/ankicommunity/anki-sync-server-rs/blob/master/docs/container.md)
+allow for easy development/build without installing any 
+toolchain,more see [containerized build](https://github.com/ankicommunity/anki-sync-server-rs/blob/master/docs/container.md)
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
@@ -92,14 +96,11 @@ more operations can be found by querying help
 
 ### TODO
 
-- [x] allow self-signed certificate used in https in Intranet environment
 - [ ] error handle
-- [x] anki versions test
-- [x]  automatically add user account into auth db when account
-  is not empty in Settings.toml
 - [ ]  builds for Linux and MacOS
-- [ ]  fix log time incorrect
-- [ ]  add github repo address
+- [ ]  fix incorrect log time when running on cross-compiled
+binary
+- [ ]  add github repo link to log info
 ### Compatibility
 |tested anki versions|2.1.15,2.1.28,2.1.35,2.1.50|
 |----|----|
