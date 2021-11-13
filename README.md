@@ -19,7 +19,7 @@ tar -zxvf ankisyncd_xxx.tar.gz
 below.
 3. run from terminal,
 ```
-`./ankisyncd`
+./ankisyncd
 ```
 Currently supported Linux platforms
 |machine|ENV|
@@ -27,7 +27,8 @@ Currently supported Linux platforms
 |x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
 |aarch64(arm64)|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
 |armv7(arm32)|cross-compiled on wsl2(ubuntu)|
-
+### containerized build (docker) and run
+more see [containerized build](https://github.com/ankicommunity/anki-sync-server-rs/blob/master/docs/container.md)
 ### build from source
 1. make sure Rust and its toolchains are installed.
 follow [this link](https://www.rust-lang.org/tools/install) using rustup to install.
