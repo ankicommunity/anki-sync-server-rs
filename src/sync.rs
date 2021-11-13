@@ -312,9 +312,9 @@ pub async fn sync_app(
         //  POST
         map = parse_payload(payload).await?
     };
-    let d = map.get("data");
+    let data_frame = map.get("data");
     // not unzip if compression is None ?
-    let data = d.as_ref().map(|dt| _decode(dt, map.get("c")).unwrap());
+    let data = data_frame.as_ref().map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
 
@@ -323,10 +323,10 @@ pub async fn sync_app(
 
     match name.as_str() {
         // all normal sync url eg chunk..
-        o if OPERATIONS.contains(&o) => {
+        op if OPERATIONS.contains(&op) => {
             // create a new server obj
 
-            let mtd = map_sync_req(o);
+            let mtd = map_sync_req(op);
             let data = if mtd == Some(Method::FullUpload) {
                 //   write data from client to file ,as its db data,and return
                 // its path in bytes
@@ -447,10 +447,10 @@ pub async fn sync_app(
                         }
                         SyncRequest::FullDownload => {
                             let s = backend.col_into_server().unwrap();
-                            let f = Box::new(s).full_download(None).await.unwrap();
-                            let mut b = vec![];
-                            fs::File::open(f).unwrap().read_to_end(&mut b).unwrap();
-                            Ok(HttpResponse::Ok().body(b))
+                            let file = Box::new(s).full_download(None).await.unwrap();
+                            let mut file_buffer = vec![];
+                            fs::File::open(file).unwrap().read_to_end(&mut file_buffer).unwrap();
+                            Ok(HttpResponse::Ok().body(file_buffer))
                         }
                         p => {
                             let d = backend.sync_server_method_inner(p).unwrap();
@@ -462,13 +462,13 @@ pub async fn sync_app(
             }
         }
         // media sync
-        m if MOPERATIONS.contains(&m) => {
+        media_op if MOPERATIONS.contains(&media_op) => {
             // session None is forbidden
             let session = sn.clone().unwrap();
             let (md, mf) = session.get_md_mf();
 
             let mm = MediaManager::new(mf, md).unwrap();
-            match m {
+            match media_op {
                 "begin" => {
                     let lastusn = mm.last_usn();
                     let sbr = SyncBeginResult {
