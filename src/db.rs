@@ -6,9 +6,9 @@ pub fn fetchone<T: FromSql>(
     param: Option<&String>,
 ) -> Result<Option<T>> {
     if let Some(p) = param {
-        return conn.query_row(sql, [p], |row| row.get(0)).optional();
+        conn.query_row(sql, [p], |row| row.get(0)).optional()
     } else {
-        return conn.query_row(sql, [], |row| row.get(0)).optional();
+        conn.query_row(sql, [], |row| row.get(0)).optional()
     }
 }
 /// open media db

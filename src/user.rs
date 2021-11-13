@@ -14,8 +14,7 @@ fn create_salt() -> String {
     // create salt
     let mut key = [0u8; 8];
     OsRng.fill_bytes(&mut key);
-    let salt = hex::encode(key);
-    salt
+    hex::encode(key)
 }
 fn set_password_for_user(username: &str, new_password: &str) -> rusqlite::Result<()> {
     if user_exists(username).unwrap() {
@@ -57,7 +56,7 @@ pub fn add_user(args: &[String]) -> io::Result<()> {
 pub fn passwd(args: &[String]) -> io::Result<()> {
     let username = &args[0];
     let password = &args[1];
-    set_password_for_user(username, &password).unwrap();
+    set_password_for_user(username, password).unwrap();
     Ok(())
 }
 pub fn del_user(username: &str) -> io::Result<()> {
@@ -197,17 +196,17 @@ pub fn authenticate(hkreq: &HostKeyRequest) -> bool {
         let actual_value = create_pass_hash(&hkreq.username, &hkreq.password, salt);
         if actual_value == expect_value {
             println!("Authentication succeeded for  user {}.", &hkreq.username);
-            return true;
+            true
         } else {
             println!("Authentication failed for user {}", &hkreq.username);
-            return false;
+            false
         }
     } else {
         println!(
             "Authentication failed for nonexistent user {}.",
             &hkreq.username
         );
-        return false;
+        false
     }
 }
 
