@@ -31,8 +31,8 @@ impl Session {
     }
     pub fn get_col_path(&self) -> PathBuf {
         let user_path = self.path.as_ref().unwrap();
-        let col_path = user_path.join("collection.anki2");
-        col_path
+        // return col_path
+        user_path.join("collection.anki2")
     }
     pub fn get_md_mf(&self) -> (PathBuf, PathBuf) {
         let user_path = self.path.as_ref().unwrap();
@@ -114,6 +114,13 @@ pub struct SessionManager {
     /// k:hkey
     pub sessions: HashMap<String, Session>,
 }
+
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionManager {
     pub fn new() -> SessionManager {
         SessionManager {
@@ -137,7 +144,7 @@ impl SessionManager {
             let v = query_vec(sql, &conn, skey);
             conn.close().unwrap();
             if let Some(mut vc) = v {
-                let session = Session::from(&skey, &vc.get(1).unwrap(), &vc.get(2).unwrap());
+                let session = Session::from(skey, vc.get(1).unwrap(), vc.get(2).unwrap());
                 // add into hashmap
                 self.sessions
                     .borrow_mut()

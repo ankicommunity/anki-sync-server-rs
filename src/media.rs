@@ -22,7 +22,7 @@ static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
 fn _open_zip(d: Vec<u8>) {
     //    open zip on server
 
-    let reader = io::Cursor::new(d.clone());
+    let reader = io::Cursor::new(d);
     let mut zip = zip::ZipArchive::new(reader).unwrap();
     let mut meta_file = zip.by_name("_meta").unwrap();
     let mut v = vec![];
@@ -107,7 +107,7 @@ impl MediaManager {
                 }
             }
 
-            let file_data = match data_for_file(media_folder, &file) {
+            let file_data = match data_for_file(media_folder, file) {
                 Ok(data) => data,
                 Err(_) => {
                     invalid_entries.push(file);
@@ -116,18 +116,18 @@ impl MediaManager {
             };
 
             if let Some(data) = &file_data {
-                let normalized = normalize_filename(&file);
+                let normalized = normalize_filename(file);
                 if let Cow::Owned(_) = normalized {
-                    invalid_entries.push(&file);
+                    invalid_entries.push(file);
                     continue;
                 }
 
                 if data.is_empty() {
-                    invalid_entries.push(&file);
+                    invalid_entries.push(file);
                     continue;
                 }
                 if data.len() > SYNC_SINGLE_FILE_MAX_BYTES {
-                    invalid_entries.push(&file);
+                    invalid_entries.push(file);
                     continue;
                 }
                 accumulated_size += data.len();
@@ -145,7 +145,7 @@ impl MediaManager {
             // clean up invalid entries; we'll build a new zip
 
             for fname in invalid_entries {
-                self.remove_entry(&fname);
+                self.remove_entry(fname);
             }
         }
 

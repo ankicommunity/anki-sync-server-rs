@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 mod db;
 pub mod envconfig;
 mod media;
@@ -15,7 +16,6 @@ use actix_web::{middleware, web, App, HttpServer};
     sync::{favicon, sync_app, welcome},
     user::{add_user, create_auth_db, user_list, user_manage},
 };
-use env_logger;
 use std::{env, sync::Mutex};
 use std::{fs, path::Path};
 /// generate Setting.toml if not exist
@@ -83,8 +83,8 @@ async fn main() -> std::io::Result<()> {
         let pass = env_variables().remove("userpassword").unwrap();
         // insert record into db if user if not empty,
         // else start server
-        if name !="" {
-            if  pass!=""{
+        if !name.is_empty() {
+            if  !pass.is_empty() {
                   // look up in db to check if user exist
             let user_list = user_list().unwrap();
             // if not insert into db

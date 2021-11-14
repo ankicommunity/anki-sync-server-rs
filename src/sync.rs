@@ -45,7 +45,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
-static OPERATIONS: [&'static str; 12] = [
+static OPERATIONS: [&str; 12] = [
     "hostKey",
     "meta",
     "upload",
@@ -59,7 +59,7 @@ static OPERATIONS: [&'static str; 12] = [
     "finish",
     "abort",
 ];
-static MOPERATIONS: [&'static str; 5] = [
+static MOPERATIONS: [&str; 5] = [
     "begin",
     "mediaChanges",
     "mediaSanity",
@@ -200,7 +200,7 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
         if let Some(zip_name) = o {
             // on ankidroid zip_name is Some("") if
             // media deleted from client
-            if zip_name == "" {
+            if zip_name.is_empty() {
                 media_to_remove.push(fname);
             } else {
                 fmap.insert(zip_name, fname);
@@ -227,7 +227,7 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
         file.read_to_end(&mut data).unwrap();
         //    write zip data to media folder
         usn += 1;
-        let add = mm.add_file(&real_name, &data, usn).await;
+        let add = mm.add_file(real_name, &data, usn).await;
 
         media_to_add.push(add);
     }
@@ -274,12 +274,12 @@ pub fn get_session(
     };
 
     let s = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().unwrap().load(&hkey);
+        let s = session_manager.lock().unwrap().load(hkey);
         s
         //    http forbidden if seesion is NOne ?
     } else {
-        if let Some(skv) = map.get("sk") {
-            let skey = String::from_utf8(skv.to_owned()).unwrap();
+        match map.get("sk") {
+          Some(skv) => { let skey = String::from_utf8(skv.to_owned()).unwrap();
 
             Some(
                 session_manager
@@ -288,8 +288,8 @@ pub fn get_session(
                     .load_from_skey(&skey)
                     .unwrap(),
             )
-        } else {
-            None
+        }, 
+          None => None
         }
     };
     (s, hkey)
@@ -312,13 +312,9 @@ pub async fn sync_app(
         //  POST
         map = parse_payload(payload).await?
     };
-    let d = map.get("data");
-    let data = if let Some(dt) = &d {
-        // not unzip if compression is None ?
-        Some(_decode(dt, map.get("c")).unwrap())
-    } else {
-        None
-    };
+    let data_frame = map.get("data");
+    // not unzip if compression is None ?
+    let data = data_frame.as_ref().map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
 
@@ -327,10 +323,10 @@ pub async fn sync_app(
 
     match name.as_str() {
         // all normal sync url eg chunk..
-        o if OPERATIONS.contains(&o) => {
+        op if OPERATIONS.contains(&op) => {
             // create a new server obj
 
-            let mtd = map_sync_req(o);
+            let mtd = map_sync_req(op);
             let data = if mtd == Some(Method::FullUpload) {
                 //   write data from client to file ,as its db data,and return
                 // its path in bytes
@@ -353,9 +349,9 @@ pub async fn sync_app(
                 SyncRequest::HostKey(x) => {
                     let res = operation_hostkey(session_manager, x).await?;
                     if let Some(resp) = res {
-                        return Ok(HttpResponse::Ok().json(resp));
+                        Ok(HttpResponse::Ok().json(resp))
                     } else {
-                        return Ok(HttpResponse::NonAuthoritativeInformation().finish());
+                        Ok(HttpResponse::NonAuthoritativeInformation().finish())
                     }
                 }
                 x => {
@@ -377,7 +373,7 @@ pub async fn sync_app(
 
                             let z = server.apply_changes(u.changes).await.unwrap();
 
-                            return Ok(HttpResponse::Ok().json(z));
+                            Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::Start(x) => {
                             let mut s = sn.unwrap();
@@ -401,7 +397,7 @@ pub async fn sync_app(
 
                             server.col.storage.commit_trx().unwrap();
                             server.into_col().storage.db.close().unwrap();
-                            return Ok(HttpResponse::Ok().json(grav));
+                            Ok(HttpResponse::Ok().json(grav))
                         }
                         SyncRequest::ApplyGraves(u) => {
                             let mut server = backend.col_into_server().unwrap();
@@ -413,12 +409,12 @@ pub async fn sync_app(
                             server.apply_graves(u.chunk).await.unwrap();
                             server.col.storage.commit_trx().unwrap();
 
-                            return Ok(HttpResponse::Ok().body("null"));
+                            Ok(HttpResponse::Ok().body("null"))
                         }
                         SyncRequest::Chunk => {
                             let z = backend.col_into_server().unwrap().into_col();
                             let chunk = chunk(&z).await;
-                            return Ok(HttpResponse::Ok().json(chunk));
+                            Ok(HttpResponse::Ok().json(chunk))
                         }
                         SyncRequest::ApplyChunk(u) => {
                             let mut server = backend.col_into_server().unwrap();
@@ -427,7 +423,7 @@ pub async fn sync_app(
                             };
                             server.client_is_newer = sn.unwrap().client_newer;
                             server.apply_chunk(u.chunk).await.unwrap();
-                            return Ok(HttpResponse::Ok().body("null"));
+                            Ok(HttpResponse::Ok().body("null"))
                         }
                         SyncRequest::SanityCheck(u) => {
                             let z = backend
@@ -436,43 +432,43 @@ pub async fn sync_app(
                                 .sanity_check(u.client)
                                 .await
                                 .unwrap();
-                            return Ok(HttpResponse::Ok().json(z));
+                            Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::Finish => {
                             let z = backend.col_into_server().unwrap().finish().await.unwrap();
-                            return Ok(HttpResponse::Ok().json(z));
+                            Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::FullUpload(u) => {
                             let s = backend.col_into_server().unwrap();
 
                             Box::new(s).full_upload(&u, true).await.unwrap();
 
-                            return Ok(HttpResponse::Ok().body("OK"));
+                            Ok(HttpResponse::Ok().body("OK"))
                         }
                         SyncRequest::FullDownload => {
                             let s = backend.col_into_server().unwrap();
-                            let f = Box::new(s).full_download(None).await.unwrap();
-                            let mut b = vec![];
-                            fs::File::open(f).unwrap().read_to_end(&mut b).unwrap();
-                            return Ok(HttpResponse::Ok().body(b));
+                            let file = Box::new(s).full_download(None).await.unwrap();
+                            let mut file_buffer = vec![];
+                            fs::File::open(file).unwrap().read_to_end(&mut file_buffer).unwrap();
+                            Ok(HttpResponse::Ok().body(file_buffer))
                         }
                         p => {
                             let d = backend.sync_server_method_inner(p).unwrap();
 
-                            return Ok(HttpResponse::Ok().body(d));
+                            Ok(HttpResponse::Ok().body(d))
                         }
                     }
                 }
             }
         }
         // media sync
-        m if MOPERATIONS.contains(&m) => {
+        media_op if MOPERATIONS.contains(&media_op) => {
             // session None is forbidden
             let session = sn.clone().unwrap();
             let (md, mf) = session.get_md_mf();
 
             let mm = MediaManager::new(mf, md).unwrap();
-            match m {
+            match media_op {
                 "begin" => {
                     let lastusn = mm.last_usn();
                     let sbr = SyncBeginResult {
@@ -482,7 +478,7 @@ pub async fn sync_app(
                         }),
                         err: String::new(),
                     };
-                    return Ok(HttpResponse::Ok().json(sbr));
+                    Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
                     let (procs_cnt, lastusn) =
@@ -493,7 +489,7 @@ pub async fn sync_app(
                         data: Some(vec![procs_cnt, lastusn as usize]),
                         err: String::new(),
                     };
-                    return Ok(HttpResponse::Ok().json(upres));
+                    Ok(HttpResponse::Ok().json(upres))
                 }
                 "mediaChanges" => {
                     //client lastusn 0
@@ -520,7 +516,7 @@ pub async fn sync_app(
                         }
                     };
 
-                    return Ok(HttpResponse::Ok().json(d));
+                    Ok(HttpResponse::Ok().json(d))
                 }
                 "downloadFiles" => {
                     // client data :requested filenames
@@ -531,7 +527,7 @@ pub async fn sync_app(
                     let v: ZipRequest = serde_json::from_slice(&data.unwrap()).unwrap();
                     let d = mm.zip_files(v).unwrap();
 
-                    return Ok(HttpResponse::Ok().body(d.unwrap()));
+                    Ok(HttpResponse::Ok().body(d.unwrap()))
                 }
                 "mediaSanity" => {
                     let locol: FinalizeRequest =
@@ -545,18 +541,18 @@ pub async fn sync_app(
                         data: Some(res.to_owned()),
                         err: String::new(),
                     };
-                    return Ok(HttpResponse::Ok().json(result));
+                    Ok(HttpResponse::Ok().json(result))
                 }
                 _ => {
-                    return Ok(HttpResponse::Ok().finish());
+                    Ok(HttpResponse::Ok().finish())
                 }
             }
         }
 
         _ => {
-            return Ok(HttpResponse::NotFound().finish());
+            Ok(HttpResponse::NotFound().finish())
         }
-    };
+    }
 }
 
 #[test]
