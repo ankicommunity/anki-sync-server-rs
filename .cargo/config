@@ -1,5 +1,10 @@
 #this file is for cross-compiling's use
 
+#MacOS
+[target.x86_64-apple-darwin]
+linker = "x86_64-apple-darwin14-clang"
+ar = "x86_64-apple-darwin14-ar"
+#Windows
 [target.i686-pc-windows-msvc]
 linker = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\link.exe"
 # Linux
@@ -18,7 +23,8 @@ rustflags  = [
 [target.x86_64-unknown-linux-musl]
 linker = "x86_64-linux-musl-gcc"
 rustflags = ["-C", "target-feature=+crt-static",
- "-C", "link-args=-static",]
+ "-C", "link-args=-static",
+ ]
 
 #for cmd line use
 #[net]

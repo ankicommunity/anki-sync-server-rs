@@ -101,6 +101,7 @@ more operations can be found by querying help
 - [ ]  fix incorrect log time when running on cross-compiled
 binary
 - [ ]  add github repo link to log info
+- [ ] wiki writing
 ### Compatibility
 |tested anki versions|2.1.15,2.1.28,2.1.35,2.1.50|
 |----|----|
