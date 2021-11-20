@@ -1,4 +1,4 @@
-use crate::envconfig::env_variables;
+use crate::parse::env_variables;
 use anki::collection::{open_collection, Collection};
 use anki::i18n::I18n;
 use anki::log;

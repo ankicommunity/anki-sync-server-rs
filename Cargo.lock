@@ -422,6 +422,7 @@ dependencies = [
  "anki",
  "async-std",
  "bytes 0.5.6",
+ "clap",
  "config",
  "env_logger",
  "flate2",
@@ -849,6 +850,37 @@ dependencies = [
  "num-traits 0.2.14",
  "time 0.1.44",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "clap"
+version = "3.0.0-beta.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "feff3878564edb93745d58cf63e17b63f24142506e7a20c87a5521ed7bfb1d63"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
+ "strsim",
+ "termcolor",
+ "textwrap",
+ "unicase",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.0.0-beta.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b15c6b4f786ffb6192ffe65a36855bc1fc2444bcd0945ae16748dcd6ed7d0d3"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2212,6 +2244,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_str_bytes"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "addaa943333a514159c80c97ff4a93306530d965d27e139188283cd13e06a799"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "ouroboros"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3336,6 +3377,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
 name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3427,6 +3474,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "textwrap"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
+dependencies = [
+ "unicode-width",
 ]
 
 [[package]]

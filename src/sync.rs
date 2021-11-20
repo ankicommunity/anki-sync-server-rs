@@ -1,6 +1,6 @@
 use crate::{
-    envconfig,
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
+    parse,
     session::SessionManager,
     user::authenticate,
 };
@@ -10,7 +10,7 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
     backend_proto::sync_server_method_request::Method,
-    collection:: Collection,
+    collection::Collection,
     i18n::I18n,
     media::sync::{
         slog::{self, o},
@@ -28,11 +28,7 @@ use anki::{
     types::Usn,
 };
 use rusqlite::params;
-use std::{
-    io,
-    sync::Arc,
- 
-};
+use std::{io, sync::Arc};
 
 use crate::session::Session;
 use flate2::read::GzDecoder;
@@ -121,10 +117,7 @@ async fn operation_hostkey(
     }
     let hkey = gen_hostkey(&hkreq.username);
 
-    let dir = envconfig::env_variables()
-        .get("data_root")
-        .unwrap()
-        .to_owned();
+    let dir = parse::env_variables().get("data_root").unwrap().to_owned();
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path);
     session_manager.lock().unwrap().save(hkey.clone(), session);
@@ -279,17 +272,18 @@ pub fn get_session(
         //    http forbidden if seesion is NOne ?
     } else {
         match map.get("sk") {
-          Some(skv) => { let skey = String::from_utf8(skv.to_owned()).unwrap();
+            Some(skv) => {
+                let skey = String::from_utf8(skv.to_owned()).unwrap();
 
-            Some(
-                session_manager
-                    .lock()
-                    .unwrap()
-                    .load_from_skey(&skey)
-                    .unwrap(),
-            )
-        }, 
-          None => None
+                Some(
+                    session_manager
+                        .lock()
+                        .unwrap()
+                        .load_from_skey(&skey)
+                        .unwrap(),
+                )
+            }
+            None => None,
         }
     };
     (s, hkey)
@@ -314,7 +308,9 @@ pub async fn sync_app(
     };
     let data_frame = map.get("data");
     // not unzip if compression is None ?
-    let data = data_frame.as_ref().map(|dt| _decode(dt, map.get("c")).unwrap());
+    let data = data_frame
+        .as_ref()
+        .map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
 
@@ -449,7 +445,10 @@ pub async fn sync_app(
                             let s = backend.col_into_server().unwrap();
                             let file = Box::new(s).full_download(None).await.unwrap();
                             let mut file_buffer = vec![];
-                            fs::File::open(file).unwrap().read_to_end(&mut file_buffer).unwrap();
+                            fs::File::open(file)
+                                .unwrap()
+                                .read_to_end(&mut file_buffer)
+                                .unwrap();
                             Ok(HttpResponse::Ok().body(file_buffer))
                         }
                         p => {
@@ -543,15 +542,11 @@ pub async fn sync_app(
                     };
                     Ok(HttpResponse::Ok().json(result))
                 }
-                _ => {
-                    Ok(HttpResponse::Ok().finish())
-                }
+                _ => Ok(HttpResponse::Ok().finish()),
             }
         }
 
-        _ => {
-            Ok(HttpResponse::NotFound().finish())
-        }
+        _ => Ok(HttpResponse::NotFound().finish()),
     }
 }
 
@@ -586,5 +581,3 @@ fn test_parse_qs() {
     println!("{:?}", url);
     println!("{:?}", query);
 }
-
-

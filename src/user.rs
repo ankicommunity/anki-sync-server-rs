@@ -1,6 +1,7 @@
 use crate::db::fetchone;
-use crate::envconfig::env_variables;
+use crate::parse::env_variables;
 use anki::sync::http::HostKeyRequest;
+use clap::ArgMatches;
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
@@ -8,7 +9,6 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::io;
-use std::io::Write;
 use std::path::Path;
 fn create_salt() -> String {
     // create salt
@@ -53,13 +53,13 @@ pub fn add_user(args: &[String]) -> io::Result<()> {
     add_user_to_auth_db(username, password).unwrap();
     Ok(())
 }
-pub fn passwd(args: &[String]) -> io::Result<()> {
+fn passwd(args: &[String]) -> io::Result<()> {
     let username = &args[0];
     let password = &args[1];
     set_password_for_user(username, password).unwrap();
     Ok(())
 }
-pub fn del_user(username: &str) -> io::Result<()> {
+fn del_user(username: &str) -> io::Result<()> {
     let sql = "DELETE FROM auth WHERE username=?";
     let conn = Connection::open("auth.db").unwrap();
     conn.execute(sql, [username]).unwrap();
@@ -77,76 +77,42 @@ pub fn create_auth_db() -> io::Result<()> {
 
     Ok(())
 }
-/// into a vec
-fn read_args_from_cmd() -> Vec<String> {
-    let mut s = String::new();
-    io::stdin().read_line(&mut s).unwrap();
-    let args = s.trim()
-        .split_ascii_whitespace()
-        .into_iter()
-        .map(|r| r.to_string())
-        .collect::<Vec<_>>();
-    args
-}
+
 /// command-line user management,ie add user
-pub fn user_manage() {
-    println!("1) add user");
-    println!("2) delete user");
-    println!("3) change user password");
-    println!("4) show existing users");
-    print!("your choice?");
-    io::stdout().flush().unwrap();
-    let mut out = String::new();
-    io::stdin().read_line(&mut out).unwrap();
-    match out.trim() {
-        "1" => {
-            // add user
-            // notice if user already exists
-            println!("input username and password,separate by whitespace, ie: user pass");
-            print!("your input?");
-            io::stdout().flush().unwrap();
-            let args = read_args_from_cmd();
-            if args.len() == 2 {
-                add_user(&args).unwrap();
-            } else {
-                panic!("error input format")
+pub fn user_manage(matches: ArgMatches) {
+    if let Some(sub) = matches.subcommand_name() {
+        match sub {
+            "adduser" => {
+                let name = matches.value_of("username").unwrap().to_owned();
+                let pass = matches.value_of("password").unwrap().to_owned();
+                add_user(&[name, pass]).unwrap();
             }
-        }
-        "2" => {
-            // delete user
-            println!("input to-be-deleted user ,multi users available,separated by whitespace,ie: user1 user2");
-            print!("your input?");
-            io::stdout().flush().unwrap();
-            let args = read_args_from_cmd();
-            for u in args {
-                del_user(&u).unwrap();
-            }
-        }
-        "3" => {
-            // change user password
-            println!("input username and to-be-changed password,separate by whitespace, ie: user newpass");
-            print!("your input?");
-            io::stdout().flush().unwrap();
-            let args = read_args_from_cmd();
-            if args.len() == 2 {
-                passwd(&args).unwrap();
-            } else {
-                panic!("error input len")
-            }
-        }
-        "4" => {
-            // show existing users
-            println!("existing users are as follows");
-            let user_list = user_list().unwrap();
-            if let Some(v) = user_list {
-                for i in v {
-                    println!("{}", i)
+            "deluser" => {
+                for u in matches
+                    .values_of_t::<String>("users")
+                    .unwrap_or_else(|e| e.exit())
+                {
+                    del_user(&u).unwrap();
                 }
-            } else {
-                println!()
             }
+            "passwd" => {
+                let name = matches.value_of("username").unwrap().to_owned();
+                let newpass = matches.value_of("newpassword").unwrap().to_owned();
+                passwd(&[name, newpass]).unwrap();
+            }
+            "lsuser" => {
+                let user_list = user_list().unwrap();
+                if let Some(v) = user_list {
+                    for i in v {
+                        println!("{}", i)
+                    }
+                } else {
+                    println!()
+                }
+            }
+
+            _ => panic!("unsupported subcommand name"),
         }
-        _ => {}
     }
 }
 pub fn user_list() -> io::Result<Option<Vec<String>>> {
