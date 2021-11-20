@@ -12,7 +12,7 @@ use self::{
 };
 use crate::parse::env_variables;
 use actix_web::{middleware, web, App, HttpServer};
-use parse::parse;
+use parse::{conf::write_conf, parse};
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
 use std::fs::File;
@@ -20,31 +20,7 @@ use std::io::BufReader;
 use std::{env, sync::Mutex};
 use std::{fs, path::Path};
 /// generate Setting.toml if not exist
-fn setting_exist() {
-    let p = Path::new("Settings.toml");
-    let content = r#"
-host="0.0.0.0"
-port = "27701"
-data_root = "./collections"
-base_url = "/sync/"
-base_media_url = "/msync/"
-auth_db_path = "./auth.db"
-session_db_path = "./session.db"
-# following fields will be added 
-#into auth.db if not empty,and two fields must not be empty
-username=""
-userpassword=""
-# embeded encrypted http /https credential if in Intranet
-# true to enable ssl or false
-ssl_enable="false"
-cert_file=""
-key_file=""
 
-    "#;
-    if !p.exists() {
-        fs::write(&p, content).unwrap();
-    }
-}
 /// "cert.pem" "key.pem"
 fn load_ssl() -> Option<ServerConfig> {
     // load ssl keys
@@ -71,13 +47,16 @@ fn load_ssl() -> Option<ServerConfig> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // get env ANKISYNCD_ROOT if set as working path where
-    // server data and database reside in
+    // server data(collections folder) and database(auth.db) reside in
+let root=match env::var("ANKISYNCD_ROOT") {
+    Ok(r)=>Path::new(&r).to_owned(),
+    Err(_)=>env::current_dir().unwrap()
+};
+   write_conf(root.join("Settings.toml"));
 
-    setting_exist();
     // create db if not exist
     create_auth_db().unwrap();
-    // env vars parse
-    // enter into user management if user flag is enabled
+    //cli argument  parse
     let matches = parse();
     // set config file if parsed
 
@@ -123,4 +102,10 @@ async fn main() -> std::io::Result<()> {
             s.bind(parse::addr())?.run().await
         }
     }
+}
+
+#[test]
+fn test_var() {
+    let root=env::var("ANKISYNCD_ROOT");
+println!("{:?}",root);
 }

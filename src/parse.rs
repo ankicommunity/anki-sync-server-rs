@@ -1,6 +1,42 @@
 use clap::{App, Arg, ArgMatches};
 use config::{Environment, File};
 use std::collections::HashMap;
+
+pub mod conf{
+    use std::fs;
+    use std::path::PathBuf;
+
+    pub fn write_conf(p:PathBuf) {
+        let content = r#"
+        [address]
+        host="0.0.0.0"
+        port = "27701"
+        #set real data path with ENV ANKISYNCD_ROOT,if not exist,
+        # use current executable path 
+        [path]
+        data_root = "./collections"
+        auth_db_path = "./auth.db"
+        session_db_path = "./session.db"
+        
+        # following fields will be added 
+        #into auth.db if not empty,and two fields must not be empty
+        [account]
+        username=""
+        userpassword=""
+        
+        # embeded encrypted http /https credential if in Intranet
+        # true to enable ssl or false
+        [localcert]
+        ssl_enable="false"
+        cert_file=""
+        key_file=""
+        "#;
+        if !p.exists() {
+            fs::write(&p, content).unwrap();
+        }
+
+    }
+}
 /// construct a argument parser
 pub fn parse() -> ArgMatches {
     App::new("ankisyncd")
