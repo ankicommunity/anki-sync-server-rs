@@ -1,46 +1,43 @@
 use clap::{App, Arg, ArgMatches};
-use config::{Environment, File};
-use std::collections::HashMap;
 
-pub mod conf{
+pub mod conf {
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::Path;
 
-    pub fn write_conf(p:PathBuf) {
+    pub fn write_conf(p: &Path) {
         let content = r#"
-        [address]
-        host="0.0.0.0"
-        port = "27701"
-        #set real data path with ENV ANKISYNCD_ROOT,if not exist,
-        # use current executable path 
-        [path]
-        data_root = "./collections"
-        auth_db_path = "./auth.db"
-        session_db_path = "./session.db"
+[address]
+host="0.0.0.0"
+port = "27701"
+#set real data path with ENV ANKISYNCD_ROOT,if not exist,
+# use current executable path ,only set filename
+[path]
+data_root = "collections"
+auth_db_path = "auth.db"
+session_db_path = "session.db"
         
-        # following fields will be added 
-        #into auth.db if not empty,and two fields must not be empty
-        [account]
-        username=""
-        userpassword=""
+# following fields will be added 
+#into auth.db if not empty,and two fields must not be empty
+[account]
+username=""
+userpassword=""
         
-        # embeded encrypted http /https credential if in Intranet
-        # true to enable ssl or false
-        [localcert]
-        ssl_enable="false"
-        cert_file=""
-        key_file=""
-        "#;
+# embeded encrypted http /https credential if in Intranet
+# true to enable ssl or false
+[localcert]
+ssl_enable="false"
+cert_file=""
+key_file=""
+"#;
         if !p.exists() {
             fs::write(&p, content).unwrap();
         }
-
     }
 }
 /// construct a argument parser
 pub fn parse() -> ArgMatches {
     App::new("ankisyncd")
-        .version("0.1.2")
+        .version("v0.1.2")
         .author("a member of ankicommunity")
         .about("a person anki sync server")
         .arg(
@@ -79,47 +76,3 @@ pub fn parse() -> ArgMatches {
         )
         .get_matches()
 }
-pub fn addr() -> String {
-    let envs = env_variables();
-    let h = envs.get("host").unwrap();
-    let p = envs.get("port").unwrap();
-    format!("{}:{}", h, p)
-}
-
-/// return sync env vars in hashmap
-pub fn env_variables() -> HashMap<String, String> {
-    let mut settings = config::Config::default();
-    settings
-        // Add in `./Settings.toml`
-        .merge(File::with_name("Settings"))
-        .unwrap()
-        // Add in settings from the environment (with a prefix of APP)
-        // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
-        .merge(Environment::with_prefix("host"))
-        .unwrap()
-        .merge(Environment::with_prefix("port"))
-        .unwrap()
-        .merge(Environment::with_prefix("data"))
-        .unwrap()
-        .merge(Environment::with_prefix("base"))
-        .unwrap()
-        .merge(Environment::with_prefix("auth"))
-        .unwrap()
-        .merge(Environment::with_prefix("session"))
-        .unwrap()
-        .merge(Environment::with_prefix("ssl"))
-        .unwrap()
-        .merge(Environment::with_prefix("cert"))
-        .unwrap()
-        .merge(Environment::with_prefix("key"))
-        .unwrap()
-        .merge(Environment::with_prefix("user"))
-        .unwrap();
-
-    settings.try_into::<HashMap<String, String>>().unwrap()
-}
-
-// #[test]
-// fn test_env_vars() {
-//     println!("{:?}", env_variables())
-// }

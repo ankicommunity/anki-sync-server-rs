@@ -1,8 +1,8 @@
 use crate::{
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
-    parse,
     session::SessionManager,
     user::authenticate,
+    ROOT, SETTINGS,
 };
 
 use actix_multipart::Multipart;
@@ -117,7 +117,7 @@ async fn operation_hostkey(
     }
     let hkey = gen_hostkey(&hkreq.username);
 
-    let dir = parse::env_variables().get("data_root").unwrap().to_owned();
+    let dir = ROOT.join(SETTINGS.read().unwrap().get_str("path.data_root").unwrap());
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path);
     session_manager.lock().unwrap().save(hkey.clone(), session);

@@ -1,7 +1,8 @@
 use crate::db::fetchone;
-use crate::parse::env_variables;
+use crate::{ROOT, SETTINGS};
 use anki::sync::http::HostKeyRequest;
 use clap::ArgMatches;
+use config::Config;
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
@@ -10,6 +11,8 @@ use std::env;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::path::PathBuf;
+use std::sync::RwLockReadGuard;
 fn create_salt() -> String {
     // create salt
     let mut key = [0u8; 8];
@@ -21,7 +24,7 @@ fn set_password_for_user(username: &str, new_password: &str) -> rusqlite::Result
         let salt = create_salt();
         let hash = create_pass_hash(username, new_password, &salt);
         let sql = "UPDATE auth SET hash=? WHERE username=?";
-        let conn = Connection::open("auth.db").unwrap();
+        let conn = Connection::open(ROOT.join("auth.db")).unwrap();
         conn.execute(sql, [hash.as_str(), username]).unwrap();
         conn.close().unwrap();
     }
@@ -30,7 +33,7 @@ fn set_password_for_user(username: &str, new_password: &str) -> rusqlite::Result
 }
 
 fn create_user_dir(username: &str) -> io::Result<()> {
-    let path = Path::new("collections").join(username);
+    let path = ROOT.join("collections").join(username);
     if !path.exists() {
         fs::create_dir_all(path).unwrap();
     }
@@ -41,7 +44,7 @@ fn add_user_to_auth_db(username: &str, password: &str) -> io::Result<()> {
     let salt = create_salt();
     let pass_hash = create_pass_hash(username, password, &salt);
     let sql = "INSERT INTO auth VALUES (?, ?)";
-    let conn = Connection::open("auth.db").unwrap();
+    let conn = Connection::open(ROOT.join("auth.db")).unwrap();
     conn.execute(sql, [username, pass_hash.as_str()]).unwrap();
     conn.close().unwrap();
     create_user_dir(username).unwrap();
@@ -61,17 +64,36 @@ fn passwd(args: &[String]) -> io::Result<()> {
 }
 fn del_user(username: &str) -> io::Result<()> {
     let sql = "DELETE FROM auth WHERE username=?";
-    let conn = Connection::open("auth.db").unwrap();
+    let conn = Connection::open(ROOT.join("auth.db")).unwrap();
     conn.execute(sql, [username]).unwrap();
     conn.close().unwrap();
 
     Ok(())
 }
-
-pub fn create_auth_db() -> io::Result<()> {
+// insert record into db if username is not empty in Settings.toml
+pub fn create_account(settings: &RwLockReadGuard<Config>) {
+    // insert record into db if username is not empty,
+    let name = settings.get_str("account.username").unwrap();
+    let pass = settings.get_str("account.userpassword").unwrap();
+    // insert record into db if user if not empty,
+    // else start server
+    if !name.is_empty() {
+        if !pass.is_empty() {
+            // look up in db to check if user exist
+            let user_list = user_list().unwrap();
+            //  insert into db if username is not included indb query result
+            if !user_list.unwrap().contains(&name) {
+                add_user(&[name, pass]).unwrap();
+            }
+        } else {
+            panic!("user fields are not allowed for empty")
+        }
+    }
+}
+pub fn create_auth_db(p: PathBuf) -> io::Result<()> {
     let sql = "CREATE TABLE IF NOT EXISTS auth
 (username VARCHAR PRIMARY KEY, hash VARCHAR)";
-    let conn = Connection::open("auth.db").unwrap();
+    let conn = Connection::open(p).unwrap();
     conn.execute(sql, []).unwrap();
     conn.close().unwrap();
 
@@ -80,44 +102,43 @@ pub fn create_auth_db() -> io::Result<()> {
 
 /// command-line user management,ie add user
 pub fn user_manage(matches: ArgMatches) {
-    if let Some(sub) = matches.subcommand_name() {
-        match sub {
-            "adduser" => {
-                let name = matches.value_of("username").unwrap().to_owned();
-                let pass = matches.value_of("password").unwrap().to_owned();
-                add_user(&[name, pass]).unwrap();
-            }
-            "deluser" => {
-                for u in matches
-                    .values_of_t::<String>("users")
-                    .unwrap_or_else(|e| e.exit())
-                {
-                    del_user(&u).unwrap();
-                }
-            }
-            "passwd" => {
-                let name = matches.value_of("username").unwrap().to_owned();
-                let newpass = matches.value_of("newpassword").unwrap().to_owned();
-                passwd(&[name, newpass]).unwrap();
-            }
-            "lsuser" => {
-                let user_list = user_list().unwrap();
-                if let Some(v) = user_list {
-                    for i in v {
-                        println!("{}", i)
-                    }
-                } else {
-                    println!()
-                }
-            }
-
-            _ => panic!("unsupported subcommand name"),
+    match matches.subcommand() {
+        Some(("adduser", add_mach)) => {
+            let name = add_mach.value_of("username").unwrap().to_owned();
+            let pass = add_mach.value_of("password").unwrap().to_owned();
+            add_user(&[name, pass]).unwrap();
         }
+        Some(("deluser", del_mach)) => {
+            for u in del_mach
+                .values_of_t::<String>("users")
+                .unwrap_or_else(|e| e.exit())
+            {
+                del_user(&u).unwrap();
+            }
+        }
+        Some(("passwd", pass_mach)) => {
+            let name = pass_mach.value_of("username").unwrap().to_owned();
+            let newpass = pass_mach.value_of("newpassword").unwrap().to_owned();
+            passwd(&[name, newpass]).unwrap();
+        }
+        Some(("lsuser", _)) => {
+            let user_list = user_list().unwrap();
+            if let Some(v) = user_list {
+                for i in v {
+                    println!("{}", i)
+                }
+            } else {
+                println!()
+            }
+        }
+
+        _ => panic!("unsupported subcommand name"),
     }
 }
 pub fn user_list() -> io::Result<Option<Vec<String>>> {
     let sql = "SELECT username FROM auth";
-    let conn = Connection::open("auth.db").unwrap();
+    let auth_path = ROOT.join("auth.db");
+    let conn = Connection::open(auth_path).unwrap();
     let mut stmt = conn.prepare(sql).unwrap();
     let rows = stmt.query_map([], |r| r.get(0)).unwrap();
 
@@ -152,8 +173,13 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
 }
 
 pub fn authenticate(hkreq: &HostKeyRequest) -> bool {
-    let auth_db = &env_variables()["auth_db_path"];
-    let conn = Connection::open(auth_db).unwrap();
+    let auth_db = SETTINGS
+        .read()
+        .unwrap()
+        .get_str("path.auth_db_path")
+        .unwrap();
+
+    let conn = Connection::open(ROOT.join(Path::new(&auth_db).file_name().unwrap())).unwrap();
     let sql = "SELECT hash FROM auth WHERE username=?";
     let db_hash: Option<String> = fetchone(&conn, sql, Some(&hkreq.username)).unwrap();
     conn.close().unwrap();

@@ -1,4 +1,4 @@
-use crate::parse::env_variables;
+use crate::{ROOT, SETTINGS};
 use anki::collection::{open_collection, Collection};
 use anki::i18n::I18n;
 use anki::log;
@@ -139,7 +139,16 @@ impl SessionManager {
             Some(sesss.remove(0))
         } else {
             // db ops
-            let conn = Connection::open(&env_variables()["session_db_path"]).unwrap();
+            let conn = Connection::open(
+                ROOT.join(
+                    SETTINGS
+                        .read()
+                        .unwrap()
+                        .get_str("path.session_db_path")
+                        .unwrap(),
+                ),
+            )
+            .unwrap();
             let sql = "SELECT hkey, username, path FROM session WHERE skey=?";
             let v = query_vec(sql, &conn, skey);
             conn.close().unwrap();
@@ -158,7 +167,13 @@ impl SessionManager {
     pub fn save(&mut self, hkey: String, session: Session) {
         self.sessions.insert(hkey.clone(), session.clone());
         // db insert ops
-        let session_db = &env_variables()["session_db_path"];
+        let session_db = ROOT.join(
+            SETTINGS
+                .read()
+                .unwrap()
+                .get_str("path.session_db_path")
+                .unwrap(),
+        );
 
         let conn = if !Path::new(&session_db).exists() {
             let conn = Connection::open(session_db).unwrap();
@@ -187,9 +202,15 @@ impl SessionManager {
         if let Some(session) = sess {
             Some(session)
         } else {
-            let session_db = &env_variables()["session_db_path"];
+            let session_db = ROOT.join(
+                SETTINGS
+                    .read()
+                    .unwrap()
+                    .get_str("path.session_db_path")
+                    .unwrap(),
+            );
 
-            let conn = if !Path::new(&session_db).exists() {
+            let conn = if !session_db.exists() {
                 let conn = Connection::open(session_db).unwrap();
                 let sql="CREATE TABLE session (hkey VARCHAR PRIMARY KEY, skey VARCHAR, username VARCHAR, path VARCHAR)";
                 conn.execute(sql, []).unwrap();
