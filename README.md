@@ -75,10 +75,13 @@ key_file=""
 #### option1
 
 enter into ankisyncd account management
+i.e.create user account
 
-`ankisyncd.exe U`
+```
+ankisyncctl.exe adduser xiaoshiyilang iampass
+```
 
-and then follow the instructions
+more subcommand see help `ankisyncctl.exe -h`
 
 #### option2
 
