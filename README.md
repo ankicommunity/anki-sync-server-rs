@@ -97,6 +97,12 @@ more operations can be found by querying help
 
 `ankisyncctl -h`
 
+### ENV VAR Override
+currently var `ANKISYNCD_ROOT`,as server working dir where
+cover server data(collections),database(auth,session) and config file `Settings.toml`,is supported.
+if /home/ankiserver is set as working dir,cmd would be `export ANKISYNCD_ROOT=/home/ankiserver` on linux,
+default value would be current directory relavent to executable path.
+
 ### TODO
 
 - [ ] error handle
