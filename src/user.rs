@@ -81,7 +81,8 @@ pub fn create_auth_db() -> io::Result<()> {
 fn read_args_from_cmd() -> Vec<String> {
     let mut s = String::new();
     io::stdin().read_line(&mut s).unwrap();
-    let args = s.trim()
+    let args = s
+        .trim()
         .split_ascii_whitespace()
         .into_iter()
         .map(|r| r.to_string())

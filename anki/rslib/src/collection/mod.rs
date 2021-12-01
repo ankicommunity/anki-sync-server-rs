@@ -101,7 +101,7 @@ impl Collection {
     }
 
     /// Prepare for upload. Caller should not create transaction.
-    pub(crate) fn before_upload(&mut self) -> Result<()> {
+    pub fn before_upload(&mut self) -> Result<()> {
         self.transact_no_undo(|col| {
             col.storage.clear_all_graves()?;
             col.storage.clear_pending_note_usns()?;

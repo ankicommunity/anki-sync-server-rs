@@ -959,7 +959,6 @@ impl Collection {
         } else {
             true
         };
-        println!("add_or_update_note_if_newer {}",proceed);
         if proceed {
             let mut note: Note = entry.into();
             let nt = self
@@ -1009,7 +1008,6 @@ impl Collection {
                 break;
             }
         }
-        println!("{}",limit);
         if limit > 0 {
             chunk.done = true;
         }

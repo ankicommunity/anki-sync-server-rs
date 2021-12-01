@@ -10,7 +10,7 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
     backend_proto::sync_server_method_request::Method,
-    collection:: Collection,
+    collection::Collection,
     i18n::I18n,
     media::sync::{
         slog::{self, o},
@@ -21,18 +21,14 @@ use anki::{
     sync::http::SyncRequest,
     sync::{
         http::{HostKeyRequest, HostKeyResponse},
-        server::SyncServer,
+        server::{LocalServer, SyncServer},
         Chunk,
     },
     timestamp::TimestampSecs,
     types::Usn,
 };
 use rusqlite::params;
-use std::{
-    io,
-    sync::Arc,
- 
-};
+use std::{cell::Cell, io, sync::Arc};
 
 use crate::session::Session;
 use flate2::read::GzDecoder;
@@ -279,28 +275,31 @@ pub fn get_session(
         //    http forbidden if seesion is NOne ?
     } else {
         match map.get("sk") {
-          Some(skv) => { let skey = String::from_utf8(skv.to_owned()).unwrap();
+            Some(skv) => {
+                let skey = String::from_utf8(skv.to_owned()).unwrap();
 
-            Some(
-                session_manager
-                    .lock()
-                    .unwrap()
-                    .load_from_skey(&skey)
-                    .unwrap(),
-            )
-        }, 
-          None => None
+                Some(
+                    session_manager
+                        .lock()
+                        .unwrap()
+                        .load_from_skey(&skey)
+                        .unwrap(),
+                )
+            }
+            None => None,
         }
     };
     (s, hkey)
 }
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
+    server: web::Data<Mutex<Option<LocalServer>>>,
     payload: Multipart,
     req: HttpRequest,
     web::Path((_, name)): web::Path<(String, String)>,
 ) -> Result<HttpResponse> {
     let method = req.method().as_str();
+
     let mut map = HashMap::new();
     if method == "GET" {
         let qs = urlparse(req.uri().path_and_query().unwrap().as_str());
@@ -314,7 +313,9 @@ pub async fn sync_app(
     };
     let data_frame = map.get("data");
     // not unzip if compression is None ?
-    let data = data_frame.as_ref().map(|dt| _decode(dt, map.get("c")).unwrap());
+    let data = data_frame
+        .as_ref()
+        .map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
 
@@ -356,106 +357,211 @@ pub async fn sync_app(
                 }
                 x => {
                     // session None is forbidden
-                    let col = sn.clone().unwrap().get_col();
-                    let mut backend = Backend::new(tr, true);
-                    backend.col = Arc::new(Mutex::new(Some(col)));
+
+                    // let mut backend = Backend::new(tr, true);
+                    // backend.col = Arc::new(Mutex::new(Some(col)));
                     match x {
                         SyncRequest::ApplyChanges(u) => {
-                            let mut server = backend.col_into_server().unwrap();
+                            // let mut server = backend.col_into_server().unwrap();
 
-                            server.client_usn = Usn {
-                                0: sn.clone().unwrap().client_usn,
-                            };
-                            server.client_is_newer = sn.clone().unwrap().client_newer;
-                            server.server_usn = Usn {
-                                0: sn.clone().unwrap().server_usn,
-                            };
-
-                            let z = server.apply_changes(u.changes).await.unwrap();
-
-                            Ok(HttpResponse::Ok().json(z))
-                        }
-                        SyncRequest::Start(x) => {
-                            let mut s = sn.unwrap();
-                            s.client_newer = x.local_is_newer;
-                            s.client_usn = x.client_usn.0;
-
-                            let mut server = backend.col_into_server().unwrap();
-                            let usn = server.col.usn().unwrap().0;
-                            s.server_usn = usn;
-                            session_manager
+                            // server.client_usn = Usn {
+                            //     0: sn.clone().unwrap().client_usn,
+                            // };
+                            // server.client_is_newer = sn.clone().unwrap().client_newer;
+                            // server.server_usn = Usn {
+                            //     0: sn.clone().unwrap().server_usn,
+                            // };
+                            println!(
+                                "{}",
+                                server.lock().unwrap().as_ref().unwrap().client_is_newer
+                            );
+                            let z = server
                                 .lock()
                                 .unwrap()
-                                .sessions
-                                .insert(hkey.unwrap(), s);
-
-                            server.col.storage.begin_trx().unwrap();
-                            let grav = server
-                                .start(x.client_usn, x.local_is_newer, x.deprecated_client_graves)
+                                .as_mut()
+                                .unwrap()
+                                .apply_changes(u.changes)
                                 .await
                                 .unwrap();
 
-                            server.col.storage.commit_trx().unwrap();
-                            server.into_col().storage.db.close().unwrap();
-                            Ok(HttpResponse::Ok().json(grav))
+                            Ok(HttpResponse::Ok().json(z))
+                        }
+                        SyncRequest::Meta(x) => {
+                         let server=   if server.lock().unwrap().is_some() {
+                               if !(&server.lock().unwrap().as_ref().unwrap().col.col_path== &sn.clone().unwrap().get_col_path()){
+                                let col = sn.clone().unwrap().get_col();
+                                *server.lock().unwrap() = Some(LocalServer::new(col));
+                            server  
+                            }else{
+                                   server
+                               }
+                            }else{
+                                let col = sn.clone().unwrap().get_col();
+                                *server.lock().unwrap() = Some(LocalServer::new(col));
+                            server
+                            };
+                            // let col = sn.clone().unwrap().get_col();
+                            // *server.lock().unwrap() = Some(LocalServer::new(col));
+                            let m = server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .meta()
+                                .await
+                                .unwrap();
+                            Ok(HttpResponse::Ok().json(m))
+                        }
+                        SyncRequest::Start(x) => {
+                            // let mut s = sn.unwrap();
+                            // s.client_newer = x.local_is_newer;
+                            // s.client_usn = x.client_usn.0;
+
+                            // let mut server = backend.col_into_server().unwrap();
+                            // let usn = server.col.usn().unwrap().0;
+                            // s.server_usn = usn;
+                            // session_manager
+                            //     .lock()
+                            //     .unwrap()
+                            //     .sessions
+                            //     .insert(hkey.unwrap(), s);
+
+                            // server.col.storage.begin_trx().unwrap();
+                            // let grav = server
+                            //     .start(x.client_usn, x.local_is_newer, x.deprecated_client_graves)
+                            //     .await
+                            //     .unwrap();
+
+                            // server.col.storage.commit_trx().unwrap();
+                            // server.into_col().storage.db.close().unwrap();
+
+                            // *server.lock().unwrap()=Some(LocalServer::new(col));
+
+                            let m = server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .start(x.client_usn, x.local_is_newer, x.deprecated_client_graves)
+                                .await
+                                .unwrap();
+                            println!(
+                                "start {}{}",
+                                x.client_usn,
+                                server.lock().unwrap().as_ref().unwrap().server_usn
+                            );
+
+                            Ok(HttpResponse::Ok().json(m))
                         }
                         SyncRequest::ApplyGraves(u) => {
-                            let mut server = backend.col_into_server().unwrap();
+                            // let mut server = backend.col_into_server().unwrap();
 
-                            server.server_usn = Usn {
-                                0: sn.unwrap().server_usn,
-                            };
-                            server.col.storage.begin_trx().unwrap();
-                            server.apply_graves(u.chunk).await.unwrap();
-                            server.col.storage.commit_trx().unwrap();
+                            // server.server_usn = Usn {
+                            //     0: sn.unwrap().server_usn,
+                            // };
+                            // server.col.storage.begin_trx().unwrap();
+                            // server.apply_graves(u.chunk).await.unwrap();
+                            // server.col.storage.commit_trx().unwrap();
+                            server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .apply_graves(u.chunk)
+                                .await
+                                .unwrap();
 
                             Ok(HttpResponse::Ok().body("null"))
                         }
                         SyncRequest::Chunk => {
-                            let z = backend.col_into_server().unwrap().into_col();
-                            let chunk = chunk(&z).await;
+                            // let z = backend.col_into_server().unwrap().into_col();
+                            // let z = server.lock();
+                            // let chunk = chunk(&z.unwrap().as_ref().unwrap().col).await;
+                            let chunk = server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .chunk()
+                                .await
+                                .unwrap();
                             Ok(HttpResponse::Ok().json(chunk))
                         }
                         SyncRequest::ApplyChunk(u) => {
-                            let mut server = backend.col_into_server().unwrap();
-                            server.client_usn = Usn {
-                                0: sn.clone().unwrap().client_usn,
-                            };
-                            server.client_is_newer = sn.unwrap().client_newer;
-                            server.apply_chunk(u.chunk).await.unwrap();
+                            // let mut server = backend.col_into_server().unwrap();
+                            // server.client_usn = Usn {
+                            //     0: sn.clone().unwrap().client_usn,
+                            // };
+                            // server.client_is_newer = sn.unwrap().client_newer;
+                            // server.apply_chunk(u.chunk).await.unwrap();
+                            server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .apply_chunk(u.chunk)
+                                .await
+                                .unwrap();
+
                             Ok(HttpResponse::Ok().body("null"))
                         }
                         SyncRequest::SanityCheck(u) => {
-                            let z = backend
-                                .col_into_server()
+                            // let z = backend
+                            //     .col_into_server()
+                            //     .unwrap()
+                            //     .sanity_check(u.client)
+                            //     .await
+                            //     .unwrap();
+
+                            let z = server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
                                 .unwrap()
                                 .sanity_check(u.client)
                                 .await
                                 .unwrap();
+                            println!("{:?}", &z);
                             Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::Finish => {
-                            let z = backend.col_into_server().unwrap().finish().await.unwrap();
+                            // let z = backend.col_into_server().unwrap().finish().await.unwrap();
+
+                            let z = server
+                                .lock()
+                                .unwrap()
+                                .as_mut()
+                                .unwrap()
+                                .finish()
+                                .await
+                                .unwrap();
+
                             Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::FullUpload(u) => {
-                            let s = backend.col_into_server().unwrap();
+                            // let s = backend.col_into_server().unwrap();
 
+                            // Box::new(server.lock().unwrap().as_mut().unwrap()).full_upload(&u, true).await.unwrap();
+                            let mut s = server.lock().unwrap().take().unwrap();
+                            s.col.before_upload().unwrap();
                             Box::new(s).full_upload(&u, true).await.unwrap();
-
                             Ok(HttpResponse::Ok().body("OK"))
                         }
                         SyncRequest::FullDownload => {
-                            let s = backend.col_into_server().unwrap();
+                            // let s = backend.col_into_server().unwrap();
+                            let s = server.lock().unwrap().take().unwrap();
                             let file = Box::new(s).full_download(None).await.unwrap();
                             let mut file_buffer = vec![];
-                            fs::File::open(file).unwrap().read_to_end(&mut file_buffer).unwrap();
+                            fs::File::open(file)
+                                .unwrap()
+                                .read_to_end(&mut file_buffer)
+                                .unwrap();
                             Ok(HttpResponse::Ok().body(file_buffer))
                         }
                         p => {
-                            let d = backend.sync_server_method_inner(p).unwrap();
+                            // let d = backend.sync_server_method_inner(p).unwrap();
 
-                            Ok(HttpResponse::Ok().body(d))
+                            Ok(HttpResponse::Ok().finish())
                         }
                     }
                 }
@@ -543,15 +649,11 @@ pub async fn sync_app(
                     };
                     Ok(HttpResponse::Ok().json(result))
                 }
-                _ => {
-                    Ok(HttpResponse::Ok().finish())
-                }
+                _ => Ok(HttpResponse::Ok().finish()),
             }
         }
 
-        _ => {
-            Ok(HttpResponse::NotFound().finish())
-        }
+        _ => Ok(HttpResponse::NotFound().finish()),
     }
 }
 
@@ -586,5 +688,3 @@ fn test_parse_qs() {
     println!("{:?}", url);
     println!("{:?}", query);
 }
-
-

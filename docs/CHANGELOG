@@ -96,3 +96,20 @@ compile openssl error: '-mfloat-abi=hard': selected processor lacks an FPU
 sucessfully compiled and run well on termux(64bits)
 
 user manager addhere to env_variables auth_db path?
+
+reduce size of fn sync_app?:split intto data_sync and media_sync,
+then start_handle...
+
+replace backend with LocalServer and placed in main as Data( Cell<Option<LocalServer>>),
+server is none when server is executed take() after start?
+1.value is executed take() will no longer exist
+2.so i use web::Data<Mutex<Option<LocalServer>>> as server,
+full_sync i use take(),use as_ref/mut on other occasions
+
+enter into a specific deck panel then sync on pc will cause
+use database check panel popup?
+
+cards ops(delete/add) and then sync twice cause 
+use database check panel popup?
+
+edtiing of notes cannot not be applied to other clients?
