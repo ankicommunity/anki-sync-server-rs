@@ -371,10 +371,7 @@ pub async fn sync_app(
                             // server.server_usn = Usn {
                             //     0: sn.clone().unwrap().server_usn,
                             // };
-                            println!(
-                                "{}",
-                                server.lock().unwrap().as_ref().unwrap().client_is_newer
-                            );
+                          
                             let z = server
                                 .lock()
                                 .unwrap()
@@ -445,11 +442,7 @@ pub async fn sync_app(
                                 .start(x.client_usn, x.local_is_newer, x.deprecated_client_graves)
                                 .await
                                 .unwrap();
-                            println!(
-                                "start {}{}",
-                                x.client_usn,
-                                server.lock().unwrap().as_ref().unwrap().server_usn
-                            );
+                          
 
                             Ok(HttpResponse::Ok().json(m))
                         }
@@ -475,16 +468,16 @@ pub async fn sync_app(
                         }
                         SyncRequest::Chunk => {
                             // let z = backend.col_into_server().unwrap().into_col();
-                            // let z = server.lock();
-                            // let chunk = chunk(&z.unwrap().as_ref().unwrap().col).await;
-                            let chunk = server
-                                .lock()
-                                .unwrap()
-                                .as_mut()
-                                .unwrap()
-                                .chunk()
-                                .await
-                                .unwrap();
+                            let z = server.lock();
+                            let chunk = chunk(&z.unwrap().as_ref().unwrap().col).await;
+                            // let chunk = server
+                            //     .lock()
+                            //     .unwrap()
+                            //     .as_mut()
+                            //     .unwrap()
+                            //     .chunk()
+                            //     .await
+                            //     .unwrap();
                             Ok(HttpResponse::Ok().json(chunk))
                         }
                         SyncRequest::ApplyChunk(u) => {
@@ -521,7 +514,6 @@ pub async fn sync_app(
                                 .sanity_check(u.client)
                                 .await
                                 .unwrap();
-                            println!("{:?}", &z);
                             Ok(HttpResponse::Ok().json(z))
                         }
                         SyncRequest::Finish => {
