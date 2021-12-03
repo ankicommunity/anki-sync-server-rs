@@ -4,20 +4,20 @@ use crate::{
     user::authenticate,
     ROOT, SETTINGS,
 };
-
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
-    backend_proto::{sync_server_method_request::Method, sync_service::Service},
+    backend_proto::{sync_server_method_request::Method, sync_service::Service, collection_service::Service as CService},
     media::sync::{
         slog::{self, o},
         zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
-    timestamp::TimestampSecs,
+    timestamp::TimestampSecs, i18n::I18n,
 };
+use async_std::sync::MutexGuard;
 use std::{io, sync::Arc};
 
 use crate::session::Session;
@@ -267,11 +267,25 @@ fn get_request_data(
     }
 }
 /// open col and add col to backend
-async fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
     if mtd == Some(Method::Meta) {
         let s = sn.clone().unwrap();
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        }else {
+        //   drop(  bd.lock().unwrap().col.lock().unwrap().take());
+        //     bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+            // let b=bd.lock().unwrap();
+            // let c=b.col.lock().unwrap();
+            // let cp= &c.as_ref().unwrap().col_path;
+            // let bname=cp.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned();
+            let sname=s.clone().name.unwrap();
+            if bd.lock().unwrap().col.lock().unwrap().as_ref().unwrap().col_path.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned()!=sname{
+              let old=  bd.lock().unwrap().col.lock().unwrap().take().unwrap().storage;
+            //   old.commit_trx().unwrap();
+              drop(old);
+                bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+            }
         }
     }
 }
@@ -298,13 +312,13 @@ async fn get_resp_data(
         serde_json::to_vec(&resp.unwrap()).unwrap()
     } else if mtd == Some(Method::FullUpload) {
         // reopen col
-        let s = sn.unwrap();
-        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        // let s = sn.unwrap();
+        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         b"OK".to_vec()
     } else if mtd == Some(Method::FullDownload) {
         // reopen col
-        let s = sn.unwrap();
-        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        // let s = sn.unwrap();
+        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         // outdata here is vec of path string
         let file = String::from_utf8(outdata).unwrap();
         let mut file_buffer = vec![];
@@ -352,10 +366,18 @@ pub async fn sync_app(
             // get request data
             let mtd = map_sync_req(op);
             let data = get_request_data(mtd, sn.clone(), data.clone());
-            add_col(mtd, sn.clone(), &bd).await;
+            add_col(mtd, sn.clone(), &bd);
             
             // response data
             let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
+            if let Some(s)=sn{
+                let b=bd.lock().unwrap();
+                let c=b.col.lock().unwrap();
+                if c.is_some(){
+                    println!("col {}",&c.as_ref().unwrap().col_path.display());
+                }
+                println!("name {:?}",s.name);
+            }
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync

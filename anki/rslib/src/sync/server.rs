@@ -172,7 +172,7 @@ impl SyncServer for LocalServer {
         self.col.storage.set_modified_time(now)?;
         self.col.storage.set_last_sync(now)?;
         self.col.storage.increment_usn()?;
-        // self.col.storage.commit_rust_trx()?;
+        self.col.storage.commit_rust_trx()?;
         Ok(now)
     }
 
