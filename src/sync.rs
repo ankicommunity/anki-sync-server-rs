@@ -373,8 +373,6 @@ pub async fn sync_app(
             let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
 
             Ok(HttpResponse::Ok().body(outdata))
-
-          
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {

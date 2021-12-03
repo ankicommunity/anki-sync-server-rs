@@ -12,10 +12,9 @@ use self::{
 };
 use crate::envconfig::env_variables;
 use actix_web::{middleware, web, App, HttpServer};
-use anki::sync::server::LocalServer;
+use anki::{backend::Backend, i18n::I18n};
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
-use std::cell::Cell;
 use std::fs::File;
 use std::io::BufReader;
 use std::{env, sync::Mutex};
@@ -102,11 +101,12 @@ async fn main() -> std::io::Result<()> {
         env_logger::init();
         //reference py ver open col
         let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
-        let server: web::Data<Mutex<Option<LocalServer>>> = web::Data::new(Mutex::new(None));
+        let tr = I18n::template_only();
+        let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
         let s = HttpServer::new(move || {
             App::new()
                 .app_data(session_manager.clone())
-                .app_data(server.clone())
+                .app_data(bd.clone())
                 .service(welcome)
                 .service(favicon)
                 .service(web::resource("/{url}/{name}").to(sync_app))
