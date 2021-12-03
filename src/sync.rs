@@ -273,16 +273,10 @@ fn get_request_data(
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         }else {
-        //   drop(  bd.lock().unwrap().col.lock().unwrap().take());
-        //     bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
-            // let b=bd.lock().unwrap();
-            // let c=b.col.lock().unwrap();
-            // let cp= &c.as_ref().unwrap().col_path;
-            // let bname=cp.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned();
+            // reopen col(switch col_path)
             let sname=s.clone().name.unwrap();
             if bd.lock().unwrap().col.lock().unwrap().as_ref().unwrap().col_path.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned()!=sname{
               let old=  bd.lock().unwrap().col.lock().unwrap().take().unwrap().storage;
-            //   old.commit_trx().unwrap();
               drop(old);
                 bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
             }
@@ -292,7 +286,6 @@ fn get_request_data(
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
     mtd: Option<Method>,
-    sn: Option<Session>,
     bd: &web::Data<Mutex<Backend>>,
     data: Option<Vec<u8>>,
     session_manager: web::Data<Mutex<SessionManager>>,
@@ -369,15 +362,7 @@ pub async fn sync_app(
             add_col(mtd, sn.clone(), &bd);
             
             // response data
-            let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
-            if let Some(s)=sn{
-                let b=bd.lock().unwrap();
-                let c=b.col.lock().unwrap();
-                if c.is_some(){
-                    println!("col {}",&c.as_ref().unwrap().col_path.display());
-                }
-                println!("name {:?}",s.name);
-            }
+            let outdata = get_resp_data(mtd,  &bd, data, session_manager).await;
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
