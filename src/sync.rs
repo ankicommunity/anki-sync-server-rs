@@ -288,8 +288,90 @@ pub fn get_session(
     };
     (s, hkey)
 }
+fn get_request_data(
+    mtd: Option<Method>,
+    sn: Option<Session>,
+    data: Option<Vec<u8>>,
+) -> Option<Vec<u8>> {
+    if mtd == Some(Method::FullUpload) {
+        //   write data from client to file ,as its db data,and return
+        // its path in bytes
+        let session = sn.clone().unwrap();
+        let cp = session.get_col_path();
+
+        fs::write(&cp, data.unwrap()).unwrap();
+        Some(format!("{}.tmp", cp.display()).as_bytes().to_owned())
+    } else if mtd == Some(Method::FullDownload) {
+        let v: Vec<u8> = Vec::new();
+        Some(v)
+    } else {
+        data
+    }
+}
+/// open col and add col to backend
+fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+    if mtd == Some(Method::Meta) {
+        let s = sn.clone().unwrap();
+
+        if bd.lock().unwrap().col.lock().unwrap().is_none() {
+            bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        }
+        // change col path if path in backend isnt equal to that in session
+        if (*bd.lock().as_ref().unwrap().col.lock().as_ref().unwrap())
+            .as_ref()
+            .unwrap()
+            .col_path
+            != s.get_col_path()
+        {
+            bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        }
+    }
+}
+/// handle data sync processing with req data,generate data for response
+async fn get_resp_data(
+    mtd: Option<Method>,
+    sn: Option<Session>,
+    bd: &web::Data<Mutex<Backend>>,
+    data: Option<Vec<u8>>,
+    session_manager: web::Data<Mutex<SessionManager>>,
+) -> Vec<u8> {
+    let outdata = bd
+        .lock()
+        .unwrap()
+        .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
+            method: mtd.unwrap().into(),
+            data: data.clone().unwrap(),
+        })
+        .unwrap()
+        .json;
+    if mtd == Some(Method::HostKey) {
+        let x = serde_json::from_slice(&data.clone().unwrap()).unwrap();
+        let resp = operation_hostkey(session_manager, x).await.unwrap();
+        serde_json::to_vec(&resp.unwrap()).unwrap()
+    } else if mtd == Some(Method::FullUpload) {
+        // reopen col
+        let s = sn.unwrap();
+        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        b"OK".to_vec()
+    } else if mtd == Some(Method::FullDownload) {
+        // reopen col
+        let s = sn.unwrap();
+        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        // outdata here is vec of path string
+        let file = String::from_utf8(outdata).unwrap();
+        let mut file_buffer = vec![];
+        fs::File::open(file)
+            .unwrap()
+            .read_to_end(&mut file_buffer)
+            .unwrap();
+        file_buffer
+    } else {
+        outdata
+    }
+}
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
+    bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
     web::Path((_, name)): web::Path<(String, String)>,
@@ -314,151 +396,22 @@ pub async fn sync_app(
 
     // add session
 
-    let (sn, hkey) = get_session(&session_manager, map);
-    let tr = I18n::template_only();
+    let (sn, _) = get_session(&session_manager, map);
 
     match name.as_str() {
         // all normal sync url eg chunk..
         op if OPERATIONS.contains(&op) => {
-            // create a new server obj
+            // get request data
 
             let mtd = map_sync_req(op);
-            let data = if mtd == Some(Method::FullUpload) {
-                //   write data from client to file ,as its db data,and return
-                // its path in bytes
-                let session = sn.clone().unwrap();
-                let colpath = format!("{}.tmp", session.get_col_path().display());
-                let colp = Path::new(&colpath);
-                fs::write(colp, data.unwrap()).unwrap();
-                Some(colpath.as_bytes().to_owned())
-            } else if mtd == Some(Method::FullDownload) {
-                let v: Vec<u8> = Vec::new();
-                Some(v)
-            } else {
-                data
-            };
+            let data = get_request_data(mtd, sn.clone(), data.clone());
 
-            let syncreq =
-                SyncRequest::from_method_and_data(mtd.unwrap(), data.as_ref().unwrap().clone())
-                    .unwrap();
-            match syncreq {
-                SyncRequest::HostKey(x) => {
-                    let res = operation_hostkey(session_manager, x).await?;
-                    if let Some(resp) = res {
-                        Ok(HttpResponse::Ok().json(resp))
-                    } else {
-                        Ok(HttpResponse::NonAuthoritativeInformation().finish())
-                    }
-                }
-                x => {
-                    // session None is forbidden
-                    let col = sn.clone().unwrap().get_col();
-                    let mut backend = Backend::new(tr, true);
-                    backend.col = Arc::new(Mutex::new(Some(col)));
-                    match x {
-                        SyncRequest::ApplyChanges(u) => {
-                            let mut server = backend.col_into_server().unwrap();
+            add_col(mtd, sn.clone(), &bd);
 
-                            server.client_usn = Usn {
-                                0: sn.clone().unwrap().client_usn,
-                            };
-                            server.client_is_newer = sn.clone().unwrap().client_newer;
-                            server.server_usn = Usn {
-                                0: sn.clone().unwrap().server_usn,
-                            };
+            // response data
+            let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
 
-                            let z = server.apply_changes(u.changes).await.unwrap();
-
-                            Ok(HttpResponse::Ok().json(z))
-                        }
-                        SyncRequest::Start(x) => {
-                            let mut s = sn.unwrap();
-                            s.client_newer = x.local_is_newer;
-                            s.client_usn = x.client_usn.0;
-
-                            let mut server = backend.col_into_server().unwrap();
-                            let usn = server.col.usn().unwrap().0;
-                            s.server_usn = usn;
-                            session_manager
-                                .lock()
-                                .unwrap()
-                                .sessions
-                                .insert(hkey.unwrap(), s);
-
-                            server.col.storage.begin_trx().unwrap();
-                            let grav = server
-                                .start(x.client_usn, x.local_is_newer, x.deprecated_client_graves)
-                                .await
-                                .unwrap();
-
-                            server.col.storage.commit_trx().unwrap();
-                            server.into_col().storage.db.close().unwrap();
-                            Ok(HttpResponse::Ok().json(grav))
-                        }
-                        SyncRequest::ApplyGraves(u) => {
-                            let mut server = backend.col_into_server().unwrap();
-
-                            server.server_usn = Usn {
-                                0: sn.unwrap().server_usn,
-                            };
-                            server.col.storage.begin_trx().unwrap();
-                            server.apply_graves(u.chunk).await.unwrap();
-                            server.col.storage.commit_trx().unwrap();
-
-                            Ok(HttpResponse::Ok().body("null"))
-                        }
-                        SyncRequest::Chunk => {
-                            let z = backend.col_into_server().unwrap().into_col();
-                            let chunk = chunk(&z).await;
-                            Ok(HttpResponse::Ok().json(chunk))
-                        }
-                        SyncRequest::ApplyChunk(u) => {
-                            let mut server = backend.col_into_server().unwrap();
-                            server.client_usn = Usn {
-                                0: sn.clone().unwrap().client_usn,
-                            };
-                            server.client_is_newer = sn.unwrap().client_newer;
-                            server.apply_chunk(u.chunk).await.unwrap();
-                            Ok(HttpResponse::Ok().body("null"))
-                        }
-                        SyncRequest::SanityCheck(u) => {
-                            let z = backend
-                                .col_into_server()
-                                .unwrap()
-                                .sanity_check(u.client)
-                                .await
-                                .unwrap();
-                            Ok(HttpResponse::Ok().json(z))
-                        }
-                        SyncRequest::Finish => {
-                            let z = backend.col_into_server().unwrap().finish().await.unwrap();
-                            Ok(HttpResponse::Ok().json(z))
-                        }
-                        SyncRequest::FullUpload(u) => {
-                            let s = backend.col_into_server().unwrap();
-
-                            Box::new(s).full_upload(&u, true).await.unwrap();
-
-                            Ok(HttpResponse::Ok().body("OK"))
-                        }
-                        SyncRequest::FullDownload => {
-                            let s = backend.col_into_server().unwrap();
-                            let file = Box::new(s).full_download(None).await.unwrap();
-                            let mut file_buffer = vec![];
-                            fs::File::open(file)
-                                .unwrap()
-                                .read_to_end(&mut file_buffer)
-                                .unwrap();
-                            Ok(HttpResponse::Ok().body(file_buffer))
-                        }
-                        p => {
-                            let d = backend.sync_server_method_inner(p).unwrap();
-
-                            Ok(HttpResponse::Ok().body(d))
-                        }
-                    }
-                }
-            }
+            Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
