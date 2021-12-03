@@ -10,6 +10,7 @@ use self::{
     sync::{favicon, sync_app, welcome},
     user::{create_auth_db, user_manage},
 };
+use anki::{backend::Backend,i18n::I18n};
 use actix_web::{middleware, web, App, HttpServer};
 use config::Config;
 use lazy_static::lazy_static;
@@ -95,11 +96,13 @@ async fn main() -> std::io::Result<()> {
 
         std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
         env_logger::init();
-        //reference py ver open col
         let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
+        let tr = I18n::template_only();
+        let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
         let s = HttpServer::new(move || {
             App::new()
                 .app_data(session_manager.clone())
+                .app_data(bd.clone())
                 .service(welcome)
                 .service(favicon)
                 .service(web::resource("/{url}/{name}").to(sync_app))
