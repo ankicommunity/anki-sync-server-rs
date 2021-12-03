@@ -9,25 +9,15 @@ use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
-    backend_proto::sync_server_method_request::Method,
-    collection::Collection,
-    i18n::I18n,
+    backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
         slog::{self, o},
         zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
-    storage::{card::row_to_card, note::row_to_note, revlog::row_to_revlog_entry},
-    sync::http::SyncRequest,
-    sync::{
-        http::{HostKeyRequest, HostKeyResponse},
-        server::SyncServer,
-        Chunk,
-    },
+    sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
-    types::Usn,
 };
-use rusqlite::params;
 use std::{io, sync::Arc};
 
 use crate::session::Session;
@@ -62,39 +52,7 @@ static MOPERATIONS: [&str; 5] = [
     "uploadChanges",
     "downloadFiles",
 ];
-async fn chunk(col: &Collection) -> Chunk {
-    let mut chunk = Chunk::default();
-    let conn = &col.storage.db;
-    let server_usn = col.usn().unwrap().0;
-    let mut stmt = conn.prepare(include_str!("get_review.sql")).unwrap();
-    let mut rs = stmt.query(params![server_usn]).unwrap();
-    while let Some(r) = rs.next().transpose() {
-        let rev = row_to_revlog_entry(r.unwrap()).unwrap();
-        chunk.revlog.push(rev);
-    }
-    let sql1 = "update revlog set usn=? where usn=-1";
-    conn.execute(sql1, params![server_usn]).unwrap();
 
-    let mut stmt = conn.prepare(include_str!("get_card.sql")).unwrap();
-    let mut rs = stmt.query(params![server_usn]).unwrap();
-    while let Some(r) = rs.next().transpose() {
-        let card = row_to_card(r.unwrap()).unwrap().into();
-        chunk.cards.push(card);
-    }
-    let sql2 = "update cards set usn=? where usn=-1";
-    conn.execute(sql2, params![server_usn]).unwrap();
-
-    let mut stmt = conn.prepare(include_str!("get_note.sql")).unwrap();
-    let mut rs = stmt.query(params![server_usn]).unwrap();
-    while let Some(r) = rs.next().transpose() {
-        let note = row_to_note(r.unwrap()).unwrap().into();
-        chunk.notes.push(note);
-    }
-    let sql3 = "update notes set usn=? where usn=-1";
-    conn.execute(sql3, params![server_usn]).unwrap();
-    chunk.done = true;
-    chunk
-}
 fn gen_hostkey(username: &str) -> String {
     let mut rng = thread_rng();
     let rand_alphnumr: String = (&mut rng)
