@@ -1,57 +1,46 @@
 #![forbid(unsafe_code)]
 mod db;
-pub mod envconfig;
 mod media;
+pub mod parse;
 pub mod session;
 pub mod sync;
 pub mod user;
 use self::{
     session::SessionManager,
     sync::{favicon, sync_app, welcome},
-    user::{add_user, create_auth_db, user_list, user_manage},
+    user::{create_auth_db, user_manage},
 };
-use crate::envconfig::env_variables;
+use anki::{backend::Backend,i18n::I18n};
 use actix_web::{middleware, web, App, HttpServer};
-use anki::{backend::Backend, i18n::I18n};
+use config::Config;
+use lazy_static::lazy_static;
+use parse::{conf::write_conf, parse};
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
-use std::fs::File;
 use std::io::BufReader;
 use std::{env, sync::Mutex};
-use std::{fs, path::Path};
-/// generate Setting.toml if not exist
-fn setting_exist() {
-    let p = Path::new("Settings.toml");
-    let content = r#"
-host="0.0.0.0"
-port = "27701"
-data_root = "./collections"
-base_url = "/sync/"
-base_media_url = "/msync/"
-auth_db_path = "./auth.db"
-session_db_path = "./session.db"
-# following fields will be added 
-#into auth.db if not empty,and two fields must not be empty
-username=""
-userpassword=""
-# embeded encrypted http /https credential if in Intranet
-# true to enable ssl or false
-ssl_enable="false"
-cert_file=""
-key_file=""
-
-    "#;
-    if !p.exists() {
-        fs::write(&p, content).unwrap();
-    }
+use std::{fs::File, path::PathBuf};
+use std::{path::Path, sync::RwLock};
+use user::create_account;
+lazy_static! {
+    pub static ref SETTINGS: RwLock<Config> = RwLock::new(Config::default());
+}
+lazy_static! {
+    /// get env ANKISYNCD_ROOT if set as working path where
+    /// server data(collections folder) and database(auth.db) reside in
+ pub static ref ROOT:PathBuf=match env::var("ANKISYNCD_ROOT") {
+        Ok(r)=>Path::new(&r).to_owned(),
+        Err(_)=>env::current_dir().unwrap()
+    };
 }
 /// "cert.pem" "key.pem"
 fn load_ssl() -> Option<ServerConfig> {
     // load ssl keys
-    let status = &env_variables()["ssl_enable"];
-    if status == "true" {
-        let cert = &env_variables()["cert_file"];
-        let key = &env_variables()["key_file"];
+    let settings = SETTINGS.read().unwrap();
+    let status = settings.get_bool("localcert.ssl_enable").unwrap();
+    if status {
+        let cert = settings.get_str("localcert.cert_file").unwrap();
+        let key = settings.get_str("localcert.key_file").unwrap();
 
         let mut config = ServerConfig::new(NoClientAuth::new());
         let cert_file = &mut BufReader::new(File::open(cert).unwrap());
@@ -70,36 +59,43 @@ fn load_ssl() -> Option<ServerConfig> {
 }
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    setting_exist();
+    //cli argument  parse
+    let matches = parse();
+    // set config path if parsed and write conf settings
+    // to path
+    let conf_path = if let Some(v) = matches.value_of("config") {
+        ROOT.join(v)
+    } else {
+        ROOT.join("Settings.toml")
+    };
+    write_conf(&conf_path);
+    // merge config
+    SETTINGS
+        .write()
+        .unwrap()
+        .merge(config::File::from(conf_path))
+        .unwrap();
+
     // create db if not exist
-    create_auth_db().unwrap();
-    // env vars parse
-    // enter into user management if user flag is enabled
-    let v_args = env::args().into_iter().collect::<Vec<_>>();
-    let len = v_args.len() as u8;
-    if len == 1 {
-        // insert record into db if username is not empty,
-        let name = env_variables().remove("username").unwrap();
-        let pass = env_variables().remove("userpassword").unwrap();
-        // insert record into db if user if not empty,
-        // else start server
-        if !name.is_empty() {
-            if !pass.is_empty() {
-                // look up in db to check if user exist
-                let user_list = user_list().unwrap();
-                // if not insert into db
-                if user_list.is_none() {
-                    add_user(&[name, pass]).unwrap();
-                }
-            } else {
-                panic!("user fields are not allowed for empty")
-            }
-        }
+    let settings = SETTINGS.read().unwrap();
+    let auth_path = settings.get_str("path.auth_db_path").unwrap();
+    create_auth_db(ROOT.join(Path::new(&auth_path).file_name().unwrap())).unwrap();
+    // enter into account manage if subcommand exists,else run server
+    if matches.subcommand_name().is_some() {
+        user_manage(matches);
+        Ok(())
+    } else {
+        //    run ankisyncd without any sub-command
+
+        create_account(&settings);
         let config = load_ssl();
+        // parse ip address
+        let host = settings.get_str("address.host").unwrap();
+        let port = settings.get_str("address.port").unwrap();
+        let addr = format!("{}:{}", host, port);
 
         std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
         env_logger::init();
-        //reference py ver open col
         let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
         let tr = I18n::template_only();
         let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
@@ -113,22 +109,15 @@ async fn main() -> std::io::Result<()> {
                 .wrap(middleware::Logger::default())
         });
         if let Some(c) = config {
-            s.bind_rustls(envconfig::addr(), c)?.run().await
+            s.bind_rustls(addr, c)?.run().await
         } else {
-            s.bind(envconfig::addr())?.run().await
+            s.bind(addr)?.run().await
         }
-    } else if len == 2 {
-        let var = v_args.get(1).unwrap();
-        if var == "U" {
-            // into diff account ops according to diff
-            // choice ...
-            user_manage();
-        } else {
-            println!("incorrect flag,use capital U as flag");
-        }
-        Ok(())
-    } else {
-        println!("incorrect flag,use capital U as flag");
-        Ok(())
     }
+}
+
+#[test]
+fn test_var() {
+    let root = env::var("ANKISYNCD_ROOT");
+    println!("{:?}", root);
 }
