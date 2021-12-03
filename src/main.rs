@@ -10,8 +10,8 @@ use self::{
     sync::{favicon, sync_app, welcome},
     user::{create_auth_db, user_manage},
 };
-use anki::{backend::Backend,i18n::I18n};
 use actix_web::{middleware, web, App, HttpServer};
+use anki::{backend::Backend, i18n::I18n};
 use config::Config;
 use lazy_static::lazy_static;
 use parse::{conf::write_conf, parse};

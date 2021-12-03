@@ -158,7 +158,7 @@ impl Backend {
     /// If collection is open, run the provided closure while holding
     /// the mutex.
     /// If collection is not open, return an error.
-    fn with_col<F, T>(&self, func: F) -> Result<T>
+   pub fn with_col<F, T>(&self, func: F) -> Result<T>
     where
         F: FnOnce(&mut Collection) -> Result<T>,
     {

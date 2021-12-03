@@ -15,7 +15,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct Session {
     skey: Option<String>,
-    name: Option<String>,
+    pub name: Option<String>,
     path: Option<PathBuf>,
     version: Option<String>,
     client_version: Option<String>,

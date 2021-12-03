@@ -1009,7 +1009,6 @@ impl Collection {
                 break;
             }
         }
-        println!("{}",limit);
         if limit > 0 {
             chunk.done = true;
         }

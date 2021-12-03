@@ -255,10 +255,10 @@ fn get_request_data(
         //   write data from client to file ,as its db data,and return
         // its path in bytes
         let session = sn.clone().unwrap();
-        let cp = session.get_col_path();
-
-        fs::write(&cp, data.unwrap()).unwrap();
-        Some(format!("{}.tmp", cp.display()).as_bytes().to_owned())
+        let colpath = format!("{}.tmp", session.get_col_path().display());
+        let colp = Path::new(&colpath);
+        fs::write(colp, data.unwrap()).unwrap();
+        Some(colpath.as_bytes().to_owned())
     } else if mtd == Some(Method::FullDownload) {
         let v: Vec<u8> = Vec::new();
         Some(v)
@@ -267,20 +267,10 @@ fn get_request_data(
     }
 }
 /// open col and add col to backend
-fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+async fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
     if mtd == Some(Method::Meta) {
         let s = sn.clone().unwrap();
-
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
-            bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
-        }
-        // change col path if path in backend isnt equal to that in session
-        if (*bd.lock().as_ref().unwrap().col.lock().as_ref().unwrap())
-            .as_ref()
-            .unwrap()
-            .col_path
-            != s.get_col_path()
-        {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         }
     }
@@ -360,15 +350,12 @@ pub async fn sync_app(
         // all normal sync url eg chunk..
         op if OPERATIONS.contains(&op) => {
             // get request data
-
             let mtd = map_sync_req(op);
             let data = get_request_data(mtd, sn.clone(), data.clone());
-
-            add_col(mtd, sn.clone(), &bd);
-
+            add_col(mtd, sn.clone(), &bd).await;
+            
             // response data
             let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
-
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
@@ -491,4 +478,12 @@ fn test_parse_qs() {
     let query = url.get_parsed_query().unwrap();
     println!("{:?}", url);
     println!("{:?}", query);
+}
+
+#[test]
+fn test_split_path() {
+    let p = r".\A\bc\d";
+    let s = Path::new(p).parent().unwrap().file_name();
+    // bc
+    println!("{:?}", s)
 }
