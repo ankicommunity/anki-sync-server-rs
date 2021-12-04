@@ -1,4 +1,4 @@
-use clap::{App, Arg, ArgMatches};
+use clap::{App, Arg, ArgMatches,crate_version};
 
 pub mod conf {
     use std::fs;
@@ -37,9 +37,8 @@ key_file=""
 /// construct a argument parser
 pub fn parse() -> ArgMatches {
     App::new("ankisyncd")
-        .version("v0.1.2")
-        .author("a member of ankicommunity")
-        .about("a person anki sync server")
+    .version(crate_version!())
+        .about("a personal anki sync server written in Rust")
         .arg(
             Arg::new("config")
                 .short('c')
@@ -49,27 +48,25 @@ pub fn parse() -> ArgMatches {
                 .default_value("Settings.toml")
                 .takes_value(true),
         )
-        .arg(
-            Arg::new("v")
-                .short('v')
-                .multiple_occurrences(true)
-                .takes_value(true)
-                .about("Sets the level of verbosity"),
-        )
         .subcommand(
             App::new("adduser")
+            .short_flag('a')
                 .about("create account,insert account to database")
                 .arg(Arg::new("username").about("ie qingqing").required(true))
                 .arg(Arg::new("password").about("ie 123456").required(true)),
         )
         .subcommand(
             App::new("deluser")
+            .short_flag('d')
                 .about("delete user(s) from database")
                 .arg("<users>... 'A sequence of users, i.e. user1 user2'"), // .arg(Arg::new("username").about("ie user1 user2").required(true))
         )
-        .subcommand(App::new("lsuser").about("show existing users"))
+        .subcommand(App::new("lsuser")
+        .short_flag('l')
+        .about("show existing users"))
         .subcommand(
             App::new("passwd")
+            .short_flag('p')
                 .about("change user password")
                 .arg(Arg::new("username").about("ie qingqing").required(true))
                 .arg(Arg::new("newpassword").about("ie 123456").required(true)),
