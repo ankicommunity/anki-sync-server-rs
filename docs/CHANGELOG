@@ -97,19 +97,21 @@ sucessfully compiled and run well on termux(64bits)
 
 user manager addhere to env_variables auth_db path?
 
-reduce size of fn sync_app?:split intto data_sync and media_sync,
-then start_handle...
+replace sync_method with backend(global state).sync_server_method(input) and use  backend.open_collection(input)
+1. fail,seems blocked ,may be incompatible with async/await
 
-replace backend with LocalServer and placed in main as Data( Cell<Option<LocalServer>>),
-server is none when server is executed take() after start?
-1.value is executed take() will no longer exist
-2.so i use web::Data<Mutex<Option<LocalServer>>> as server,
-full_sync i use take(),use as_ref/mut on other occasions
 
-enter into a specific deck panel then sync on pc will cause
-use database check panel popup?
+replace sync_method with backend(global state).sync_server_method(input) and use  backend.col=session.get_col()
+1. fail,seems blocked ,may be incompatible with async/await
+2.use bd(sync_app argument/backend) and dont create variable backend,can run but with bugs
 
-cards ops(delete/add) and then sync twice cause 
-use database check panel popup?
+delete cards/deck cause sync error on ankidroid?
+1.cmp UnchunkedChanges from clients(android/pc),seems no problem,sync well
 
-edtiing of notes cannot not be applied to other clients?
+full_upload -> add cards ->sync -> shutdown syncserver and start->sync ,cause check database errir?
+1.server db is not updated in normal syncing process (only full sync will do): I have commented
+commit_rust_trx() in anki/rslib/sync/server/finish(),so changes cannot be committed to db,just cancel it.
+
+cannot switch users/profile when server is running?
+1.before meta,drop col from backend and add new col into backend when username in backend isnt equal to
+that in session (in fn add_col)
