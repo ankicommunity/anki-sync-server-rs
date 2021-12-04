@@ -8,16 +8,15 @@ use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
-    backend_proto::{sync_server_method_request::Method, sync_service::Service, collection_service::Service as CService},
+    backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
         slog::{self, o},
         zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
-    timestamp::TimestampSecs, i18n::I18n,
+    timestamp::TimestampSecs, 
 };
-use async_std::sync::MutexGuard;
 use std::{io, sync::Arc};
 
 use crate::session::Session;
