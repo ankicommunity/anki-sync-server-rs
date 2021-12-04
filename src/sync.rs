@@ -253,7 +253,7 @@ fn get_request_data(
     if mtd == Some(Method::FullUpload) {
         //   write data from client to file ,as its db data,and return
         // its path in bytes
-        let session = sn.clone().unwrap();
+        let session = sn.unwrap();
         let colpath = format!("{}.tmp", session.get_col_path().display());
         let colp = Path::new(&colpath);
         fs::write(colp, data.unwrap()).unwrap();
@@ -268,13 +268,13 @@ fn get_request_data(
 /// open col and add col to backend
 fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
     if mtd == Some(Method::Meta) {
-        let s = sn.clone().unwrap();
+        let s = sn.unwrap();
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         } else {
             // reopen col(switch col_path)
             let sname = s.clone().name.unwrap();
-            if bd
+            if *bd
                 .lock()
                 .unwrap()
                 .col
@@ -289,7 +289,6 @@ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backen
                 .unwrap()
                 .to_str()
                 .unwrap()
-                .to_owned()
                 != sname
             {
                 let old = bd
