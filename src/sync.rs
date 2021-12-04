@@ -15,7 +15,7 @@ use anki::{
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
-    timestamp::TimestampSecs, 
+    timestamp::TimestampSecs,
 };
 use std::{io, sync::Arc};
 
@@ -266,17 +266,42 @@ fn get_request_data(
     }
 }
 /// open col and add col to backend
- fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
     if mtd == Some(Method::Meta) {
         let s = sn.clone().unwrap();
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
-        }else {
+        } else {
             // reopen col(switch col_path)
-            let sname=s.clone().name.unwrap();
-            if bd.lock().unwrap().col.lock().unwrap().as_ref().unwrap().col_path.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned()!=sname{
-              let old=  bd.lock().unwrap().col.lock().unwrap().take().unwrap().storage;
-              drop(old);
+            let sname = s.clone().name.unwrap();
+            if bd
+                .lock()
+                .unwrap()
+                .col
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .col_path
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
+                != sname
+            {
+                let old = bd
+                    .lock()
+                    .unwrap()
+                    .col
+                    .lock()
+                    .unwrap()
+                    .take()
+                    .unwrap()
+                    .storage;
+                drop(old);
                 bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
             }
         }
@@ -359,9 +384,9 @@ pub async fn sync_app(
             let mtd = map_sync_req(op);
             let data = get_request_data(mtd, sn.clone(), data.clone());
             add_col(mtd, sn.clone(), &bd);
-            
+
             // response data
-            let outdata = get_resp_data(mtd,  &bd, data, session_manager).await;
+            let outdata = get_resp_data(mtd, &bd, data, session_manager).await;
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync

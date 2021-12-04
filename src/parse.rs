@@ -1,4 +1,4 @@
-use clap::{App, Arg, ArgMatches,crate_version};
+use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgMatches};
 
 pub mod conf {
     use std::fs;
@@ -36,9 +36,9 @@ key_file=""
 }
 /// construct a argument parser
 pub fn parse() -> ArgMatches {
-    App::new("ankisyncd")
-    .version(crate_version!())
-        .about("a personal anki sync server written in Rust")
+    App::new(crate_name!())
+        .version(crate_version!())
+        .about(crate_description!())
         .arg(
             Arg::new("config")
                 .short('c')
@@ -49,27 +49,46 @@ pub fn parse() -> ArgMatches {
                 .takes_value(true),
         )
         .subcommand(
-            App::new("adduser")
-            .short_flag('a')
-                .about("create account,insert account to database")
-                .arg(Arg::new("username").about("ie qingqing").required(true))
-                .arg(Arg::new("password").about("ie 123456").required(true)),
-        )
-        .subcommand(
-            App::new("deluser")
-            .short_flag('d')
-                .about("delete user(s) from database")
-                .arg("<users>... 'A sequence of users, i.e. user1 user2'"), // .arg(Arg::new("username").about("ie user1 user2").required(true))
-        )
-        .subcommand(App::new("lsuser")
-        .short_flag('l')
-        .about("show existing users"))
-        .subcommand(
-            App::new("passwd")
-            .short_flag('p')
-                .about("change user password")
-                .arg(Arg::new("username").about("ie qingqing").required(true))
-                .arg(Arg::new("newpassword").about("ie 123456").required(true)),
+            App::new("user")
+                .short_flag('U')
+                .about("user management,interact with db CRUD actions")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg(
+                    Arg::new("add")
+                        .long("add")
+                        .short('a')
+                        .about("username and password, i.e. user password")
+                        .value_names(&["username", "password"])
+                        .takes_value(true)
+                        .multiple_values(true)
+                        .number_of_values(2),
+                )
+                .arg(
+                    Arg::new("del")
+                        .long("del")
+                        .short('d')
+                        .about("A sequence of users, i.e. user1 user2")
+                        .value_name("username")
+                        .takes_value(true)
+                        .multiple_values(true)
+                        .min_values(1),
+                )
+                .arg(
+                    Arg::new("pass")
+                        .long("pass")
+                        .short('p')
+                        .about("username and new password, i.e. user newpassword")
+                        .value_names(&["username", "newpassword"])
+                        .takes_value(true)
+                        .multiple_values(true)
+                        .number_of_values(2),
+                )
+                .arg(
+                    Arg::new("list")
+                        .about("list all usernames extracted from db ")
+                        .long("list")
+                        .short('l'),
+                ),
         )
         .get_matches()
 }
