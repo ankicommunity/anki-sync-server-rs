@@ -100,39 +100,52 @@ pub fn create_auth_db(p: PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-/// command-line user management,ie add user
+/// command-line user management
 pub fn user_manage(matches: ArgMatches) {
     match matches.subcommand() {
-        Some(("adduser", add_mach)) => {
-            let name = add_mach.value_of("username").unwrap().to_owned();
-            let pass = add_mach.value_of("password").unwrap().to_owned();
-            add_user(&[name, pass]).unwrap();
-        }
-        Some(("deluser", del_mach)) => {
-            for u in del_mach
-                .values_of_t::<String>("users")
-                .unwrap_or_else(|e| e.exit())
-            {
-                del_user(&u).unwrap();
+        Some(("user", user_mach)) => {
+            if user_mach.is_present("add") {
+                let acnt = user_mach
+                    .values_of("add")
+                    .unwrap()
+                    .into_iter()
+                    .map(|a| a.to_owned())
+                    .collect::<Vec<_>>();
+                add_user(&acnt).unwrap();
             }
-        }
-        Some(("passwd", pass_mach)) => {
-            let name = pass_mach.value_of("username").unwrap().to_owned();
-            let newpass = pass_mach.value_of("newpassword").unwrap().to_owned();
-            passwd(&[name, newpass]).unwrap();
-        }
-        Some(("lsuser", _)) => {
-            let user_list = user_list().unwrap();
-            if let Some(v) = user_list {
-                for i in v {
-                    println!("{}", i)
+            if user_mach.is_present("del") {
+                let users = user_mach
+                    .values_of("del")
+                    .unwrap()
+                    .into_iter()
+                    .map(|a| a.to_owned())
+                    .collect::<Vec<_>>();
+                for u in users {
+                    del_user(&u).unwrap();
                 }
-            } else {
-                println!()
+            }
+            if user_mach.is_present("list") {
+                let user_list = user_list().unwrap();
+                if let Some(v) = user_list {
+                    for i in v {
+                        println!("{}", i)
+                    }
+                } else {
+                    println!()
+                }
+            }
+            if user_mach.is_present("pass") {
+                let acnt = user_mach
+                    .values_of("pass")
+                    .unwrap()
+                    .into_iter()
+                    .map(|a| a.to_owned())
+                    .collect::<Vec<_>>();
+                passwd(&acnt).unwrap();
             }
         }
 
-        _ => panic!("unsupported subcommand name"),
+        _ => unreachable!(),
     }
 }
 pub fn user_list() -> io::Result<Option<Vec<String>>> {
