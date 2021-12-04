@@ -15,7 +15,7 @@ use anki::{
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
-    timestamp::TimestampSecs,
+    timestamp::TimestampSecs, 
 };
 use std::{io, sync::Arc};
 
