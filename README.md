@@ -75,10 +75,13 @@ key_file=""
 #### option1
 
 enter into ankisyncd account management
+i.e.create user account
 
-`ankisyncd.exe U`
+```
+ankisyncctl.exe adduser xiaoshiyilang iampass
+```
 
-and then follow the instructions
+more subcommand see help `ankisyncctl.exe -h`
 
 #### option2
 
@@ -93,6 +96,12 @@ ankisyncctl.exe adduser rumengling liqingzhao
 more operations can be found by querying help
 
 `ankisyncctl -h`
+
+### ENV VAR Override
+currently var `ANKISYNCD_ROOT`,as server working dir where
+cover server data(collections),database(auth,session) and config file `Settings.toml`,is supported.
+if /home/ankiserver is set as working dir,cmd would be `export ANKISYNCD_ROOT=/home/ankiserver` on linux,
+default value would be current directory relavent to executable path.
 
 ### TODO
 
