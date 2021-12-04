@@ -1,10 +1,9 @@
 use crate::{
-    envconfig,
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
     session::SessionManager,
     user::authenticate,
+    ROOT, SETTINGS,
 };
-// collection_service::Service as ColServic,
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
@@ -75,10 +74,7 @@ async fn operation_hostkey(
     }
     let hkey = gen_hostkey(&hkreq.username);
 
-    let dir = envconfig::env_variables()
-        .get("data_root")
-        .unwrap()
-        .to_owned();
+    let dir = ROOT.join(SETTINGS.read().unwrap().get_str("path.data_root").unwrap());
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path);
     session_manager.lock().unwrap().save(hkey.clone(), session);
@@ -258,10 +254,10 @@ fn get_request_data(
         //   write data from client to file ,as its db data,and return
         // its path in bytes
         let session = sn.clone().unwrap();
-        let cp = session.get_col_path();
-
-        fs::write(&cp, data.unwrap()).unwrap();
-        Some(format!("{}.tmp", cp.display()).as_bytes().to_owned())
+        let colpath = format!("{}.tmp", session.get_col_path().display());
+        let colp = Path::new(&colpath);
+        fs::write(colp, data.unwrap()).unwrap();
+        Some(colpath.as_bytes().to_owned())
     } else if mtd == Some(Method::FullDownload) {
         let v: Vec<u8> = Vec::new();
         Some(v)
@@ -270,28 +266,25 @@ fn get_request_data(
     }
 }
 /// open col and add col to backend
-fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
     if mtd == Some(Method::Meta) {
         let s = sn.clone().unwrap();
-
         if bd.lock().unwrap().col.lock().unwrap().is_none() {
             bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
-        }
-        // change col path if path in backend isnt equal to that in session
-        if (*bd.lock().as_ref().unwrap().col.lock().as_ref().unwrap())
-            .as_ref()
-            .unwrap()
-            .col_path
-            != s.get_col_path()
-        {
-            bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        }else {
+            // reopen col(switch col_path)
+            let sname=s.clone().name.unwrap();
+            if bd.lock().unwrap().col.lock().unwrap().as_ref().unwrap().col_path.parent().unwrap().file_name().unwrap().to_str().unwrap().to_owned()!=sname{
+              let old=  bd.lock().unwrap().col.lock().unwrap().take().unwrap().storage;
+              drop(old);
+                bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+            }
         }
     }
 }
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
     mtd: Option<Method>,
-    sn: Option<Session>,
     bd: &web::Data<Mutex<Backend>>,
     data: Option<Vec<u8>>,
     session_manager: web::Data<Mutex<SessionManager>>,
@@ -311,13 +304,13 @@ async fn get_resp_data(
         serde_json::to_vec(&resp.unwrap()).unwrap()
     } else if mtd == Some(Method::FullUpload) {
         // reopen col
-        let s = sn.unwrap();
-        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        // let s = sn.unwrap();
+        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         b"OK".to_vec()
     } else if mtd == Some(Method::FullDownload) {
         // reopen col
-        let s = sn.unwrap();
-        bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        // let s = sn.unwrap();
+        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         // outdata here is vec of path string
         let file = String::from_utf8(outdata).unwrap();
         let mut file_buffer = vec![];
@@ -363,15 +356,12 @@ pub async fn sync_app(
         // all normal sync url eg chunk..
         op if OPERATIONS.contains(&op) => {
             // get request data
-
             let mtd = map_sync_req(op);
             let data = get_request_data(mtd, sn.clone(), data.clone());
-
             add_col(mtd, sn.clone(), &bd);
-
+            
             // response data
-            let outdata = get_resp_data(mtd, sn.clone(), &bd, data, session_manager).await;
-
+            let outdata = get_resp_data(mtd,  &bd, data, session_manager).await;
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
@@ -494,4 +484,12 @@ fn test_parse_qs() {
     let query = url.get_parsed_query().unwrap();
     println!("{:?}", url);
     println!("{:?}", query);
+}
+
+#[test]
+fn test_split_path() {
+    let p = r".\A\bc\d";
+    let s = Path::new(p).parent().unwrap().file_name();
+    // bc
+    println!("{:?}", s)
 }
