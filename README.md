@@ -1,3 +1,5 @@
+[![](https://img.shields.io/github/v/release/ankicommunity/anki-sync-server-rs)](https://github.com/ankicommunity/anki-sync-server-rs/releases/latest)[![](https://img.shields.io/github/last-commit/ankicommunity/anki-sync-server-rs)]()
+
 This one is taken as a Rust version
 of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server).
 <br>
