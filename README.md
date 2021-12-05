@@ -24,7 +24,7 @@ below.
 Currently supported Linux platforms
 |machine|ENV|
 |----|----|
-|x86_64|Windows wsl2(Warn:need testing if it's working on other computers,as this build seems a dynamically linked one)|
+|x86_64|Windows wsl2(need testing )|
 |aarch64(arm64)|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
 |armv7(arm32)|cross-compiled on wsl2(ubuntu)|
 #### MacOS(x86_64,need testing)
@@ -57,7 +57,7 @@ Unless you have set up a reverse proxy to handle encrypted connections, use `htt
 
 Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url`.
 
-Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncctl.exe adduser`.
+Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncd.exe user -a`.
 #### encrypted HTTP connection
 Due to Android policy change,some ankidroid versions need
 https transportation.Ankisyncd allow embeded self-signed certicate verify
@@ -72,30 +72,16 @@ key_file=""
 ```
 ## Account Management
 
-#### option1
+#### use subcommand of ankisyncd
 
 enter into ankisyncd account management
 i.e.create user account
 
 ```
-ankisyncctl.exe adduser xiaoshiyilang iampass
+ankisyncctl.exe user -a xiaoshiyilang iampass
 ```
 
 more subcommand see help `ankisyncctl.exe -h`
-
-#### option2
-
-use separate command line tool `ankisyncctl.exe` 
-
-ie:create user account
-
-```
-ankisyncctl.exe adduser rumengling liqingzhao
-```
-
-more operations can be found by querying help
-
-`ankisyncctl -h`
 
 ### ENV VAR Override
 currently var `ANKISYNCD_ROOT`,as server working dir where

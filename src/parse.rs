@@ -57,7 +57,7 @@ pub fn parse() -> ArgMatches {
                     Arg::new("add")
                         .long("add")
                         .short('a')
-                        .about("username and password, i.e. user password")
+                        .about("create user account, i.e.-a user password")
                         .value_names(&["username", "password"])
                         .takes_value(true)
                         .multiple_values(true)
@@ -67,7 +67,7 @@ pub fn parse() -> ArgMatches {
                     Arg::new("del")
                         .long("del")
                         .short('d')
-                        .about("A sequence of users, i.e. user1 user2")
+                        .about("delete users,allow for multi-users, i.e.-d  user1 user2")
                         .value_name("username")
                         .takes_value(true)
                         .multiple_values(true)
@@ -77,7 +77,7 @@ pub fn parse() -> ArgMatches {
                     Arg::new("pass")
                         .long("pass")
                         .short('p')
-                        .about("username and new password, i.e. user newpassword")
+                        .about("change user's password, i.e.-p user newpassword")
                         .value_names(&["username", "newpassword"])
                         .takes_value(true)
                         .multiple_values(true)
@@ -85,7 +85,7 @@ pub fn parse() -> ArgMatches {
                 )
                 .arg(
                     Arg::new("list")
-                        .about("list all usernames extracted from db ")
+                        .about("list all usernames extracted from db ,i.e. -l")
                         .long("list")
                         .short('l'),
                 ),
