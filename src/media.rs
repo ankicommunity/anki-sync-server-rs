@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, Result};
 
-use crate::db::{fetchone, open_or_create};
+use crate::db::{fetchone, open_media_db};
 #[allow(unused_imports)]
 use anki::media::{
     files::{add_data_to_folder_uniquely, data_for_file, hex, normalize_filename, sha1_of_data},
@@ -166,7 +166,7 @@ impl MediaManager {
         P: Into<PathBuf>,
         P2: AsRef<Path>,
     {
-        let db = open_or_create(media_db.as_ref())?;
+        let db = open_media_db(media_db.as_ref())?;
         Ok(MediaManager {
             db,
             media_folder: media_folder.into(),

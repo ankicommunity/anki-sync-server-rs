@@ -70,7 +70,7 @@ port = "27701"
 [paths]
 # set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
 root_dir="."
-following three lines are unnessesary
+#following three lines are unnessesary and can be skipped
  data_root = ""
  auth_db_path = ""
  session_db_path = ""
