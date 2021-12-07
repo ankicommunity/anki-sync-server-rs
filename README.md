@@ -7,7 +7,7 @@ of  [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-
 ## Install 
 
 ### run from built binary package
-download executables from releases
+download executables from [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases)
 #### Windows(x86_64/i686)
 After decompression,an account is required,following instructions
 below on how to create an account.
@@ -80,7 +80,7 @@ enter into ankisyncd account management
 i.e.create user account
 
 ```
-ankisyncctl.exe user -a xiaoshiyilang iampass
+ankisyncd.exe user -a xiaoshiyilang iampass
 ```
 
 more subcommand see help `ankisyncd.exe -h`
