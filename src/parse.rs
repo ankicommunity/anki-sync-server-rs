@@ -1,31 +1,90 @@
 use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgMatches};
 
 pub mod conf {
+    use config::{Config, ConfigError, File};
+    use serde::Deserialize;
     use std::fs;
     use std::path::Path;
+    #[derive(Debug, Deserialize)]
+    pub struct Address {
+        pub host: String,
+        pub port: String,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct Paths {
+        pub root_dir: String,
+        pub data_root: String,
+        pub auth_db_path: String,
+        pub session_db_path: String,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct Account {
+        pub username: String,
+        pub password: String,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct LocalCert {
+        pub ssl_enable: bool,
+        pub cert_file: String,
+        pub key_file: String,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct Settings {
+        pub address: Address,
+        pub paths: Paths,
+        pub account: Account,
+        pub localcert: LocalCert,
+    }
+    impl Settings {
+        // alaways read config file from the same dir as executable
+        pub fn new() -> Result<Self, ConfigError> {
+            let mut s = Config::default();
 
-    pub fn write_conf(p: &Path) {
+            // Start off by merging in the "default" configuration file
+            s.merge(File::with_name("Settings"))?;
+
+            let root = s.get_str("paths.root_dir").unwrap();
+            s.set(
+                "paths.data_root",
+                format!("{}", Path::new(&root).join("collections").display()),
+            )?;
+            s.set(
+                "paths.auth_db_path",
+                format!("{}", Path::new(&root).join("auth.db").display()),
+            )?;
+            s.set(
+                "paths.session_db_path",
+                format!("{}", Path::new(&root).join("session.db").display()),
+            )?;
+
+            s.try_into()
+        }
+    }
+    /// create configure file and write contents to it
+    pub fn create_conf(p: &Path) {
         let content = r#"
 [address]
 host="0.0.0.0"
 port = "27701"
-#set real data path with ENV ANKISYNCD_ROOT,if not exist,
 # use current executable path ,only set filename
-[path]
-data_root = "collections"
-auth_db_path = "auth.db"
-session_db_path = "session.db"
+[paths]
+# set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
+root_dir="."
+following three lines are unnessesary
+ data_root = ""
+ auth_db_path = ""
+ session_db_path = ""
         
-# following fields will be added 
+# user will be added 
 #into auth.db if not empty,and two fields must not be empty
 [account]
 username=""
-userpassword=""
+password=""
         
 # embeded encrypted http /https credential if in Intranet
 # true to enable ssl or false
 [localcert]
-ssl_enable="false"
+ssl_enable=false
 cert_file=""
 key_file=""
 "#;

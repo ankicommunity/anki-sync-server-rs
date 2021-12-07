@@ -1,4 +1,3 @@
-use crate::{ROOT, SETTINGS};
 use anki::collection::{open_collection, Collection};
 use anki::i18n::I18n;
 use anki::log;
@@ -128,7 +127,11 @@ impl SessionManager {
         }
     }
 
-    pub fn load_from_skey(&mut self, skey: &str) -> Option<Session> {
+    pub fn load_from_skey<P: AsRef<Path>>(
+        &mut self,
+        skey: &str,
+        session_db_path: P,
+    ) -> Option<Session> {
         let mut sesss = self
             .clone()
             .sessions
@@ -139,16 +142,7 @@ impl SessionManager {
             Some(sesss.remove(0))
         } else {
             // db ops
-            let conn = Connection::open(
-                ROOT.join(
-                    SETTINGS
-                        .read()
-                        .unwrap()
-                        .get_str("path.session_db_path")
-                        .unwrap(),
-                ),
-            )
-            .unwrap();
+            let conn = Connection::open(&session_db_path).unwrap();
             let sql = "SELECT hkey, username, path FROM session WHERE skey=?";
             let v = query_vec(sql, &conn, skey);
             conn.close().unwrap();
@@ -164,16 +158,10 @@ impl SessionManager {
             }
         }
     }
-    pub fn save(&mut self, hkey: String, session: Session) {
+    pub fn save<P: AsRef<Path>>(&mut self, hkey: String, session: Session, session_db_path: P) {
         self.sessions.insert(hkey.clone(), session.clone());
         // db insert ops
-        let session_db = ROOT.join(
-            SETTINGS
-                .read()
-                .unwrap()
-                .get_str("path.session_db_path")
-                .unwrap(),
-        );
+        let session_db = session_db_path.as_ref();
 
         let conn = if !Path::new(&session_db).exists() {
             let conn = Connection::open(session_db).unwrap();
@@ -196,19 +184,13 @@ impl SessionManager {
         .unwrap();
         conn.close().unwrap();
     }
-    pub fn load(&mut self, hkey: &str) -> Option<Session> {
+    pub fn load<P: AsRef<Path>>(&mut self, hkey: &str, session_db_path: P) -> Option<Session> {
         let sess = self.clone().sessions.remove(hkey);
 
         if let Some(session) = sess {
             Some(session)
         } else {
-            let session_db = ROOT.join(
-                SETTINGS
-                    .read()
-                    .unwrap()
-                    .get_str("path.session_db_path")
-                    .unwrap(),
-            );
+            let session_db = session_db_path.as_ref();
 
             let conn = if !session_db.exists() {
                 let conn = Connection::open(session_db).unwrap();

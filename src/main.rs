@@ -12,35 +12,25 @@ use self::{
 };
 use actix_web::{middleware, web, App, HttpServer};
 use anki::{backend::Backend, i18n::I18n};
-use config::Config;
-use lazy_static::lazy_static;
-use parse::{conf::write_conf, parse};
+use parse::{
+    conf::{create_conf, LocalCert, Settings},
+    parse,
+};
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
+use std::fs::File;
 use std::io::BufReader;
-use std::{env, sync::Mutex};
-use std::{fs::File, path::PathBuf};
-use std::{path::Path, sync::RwLock};
+use std::path::Path;
+use std::sync::Mutex;
 use user::create_account;
-lazy_static! {
-    pub static ref SETTINGS: RwLock<Config> = RwLock::new(Config::default());
-}
-lazy_static! {
-    /// get env ANKISYNCD_ROOT if set as working path where
-    /// server data(collections folder) and database(auth.db) reside in
- pub static ref ROOT:PathBuf=match env::var("ANKISYNCD_ROOT") {
-        Ok(r)=>Path::new(&r).to_owned(),
-        Err(_)=>env::current_dir().unwrap()
-    };
-}
+
 /// "cert.pem" "key.pem"
-fn load_ssl() -> Option<ServerConfig> {
+fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
     // load ssl keys
-    let settings = SETTINGS.read().unwrap();
-    let status = settings.get_bool("localcert.ssl_enable").unwrap();
-    if status {
-        let cert = settings.get_str("localcert.cert_file").unwrap();
-        let key = settings.get_str("localcert.key_file").unwrap();
+    let enable = localcert.ssl_enable;
+    if enable {
+        let cert = localcert.cert_file;
+        let key = localcert.key_file;
 
         let mut config = ServerConfig::new(NoClientAuth::new());
         let cert_file = &mut BufReader::new(File::open(cert).unwrap());
@@ -63,36 +53,25 @@ async fn main() -> std::io::Result<()> {
     let matches = parse();
     // set config path if parsed and write conf settings
     // to path
-    let conf_path = if let Some(v) = matches.value_of("config") {
-        ROOT.join(v)
-    } else {
-        ROOT.join("Settings.toml")
-    };
-    write_conf(&conf_path);
-    // merge config
-    SETTINGS
-        .write()
-        .unwrap()
-        .merge(config::File::from(conf_path))
-        .unwrap();
+    let conf_path = Path::new(matches.value_of("config").unwrap());
+    create_conf(&conf_path);
+    // read config file
+    let conf = Settings::new().unwrap();
 
     // create db if not exist
-    let settings = SETTINGS.read().unwrap();
-    let auth_path = settings.get_str("path.auth_db_path").unwrap();
-    create_auth_db(ROOT.join(Path::new(&auth_path).file_name().unwrap())).unwrap();
+    let auth_path = Path::new(&conf.paths.root_dir).join("auth.db");
+    create_auth_db(&auth_path).unwrap();
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
-        user_manage(matches);
+        user_manage(matches, auth_path);
         Ok(())
     } else {
         //    run ankisyncd without any sub-command
 
-        create_account(&settings);
-        let config = load_ssl();
+        create_account(conf.account, auth_path);
+        let ssl_config = load_ssl(conf.localcert);
         // parse ip address
-        let host = settings.get_str("address.host").unwrap();
-        let port = settings.get_str("address.port").unwrap();
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{}:{}", conf.address.host, conf.address.port);
 
         std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
         env_logger::init();
@@ -108,16 +87,10 @@ async fn main() -> std::io::Result<()> {
                 .service(web::resource("/{url}/{name}").to(sync_app))
                 .wrap(middleware::Logger::default())
         });
-        if let Some(c) = config {
+        if let Some(c) = ssl_config {
             s.bind_rustls(addr, c)?.run().await
         } else {
             s.bind(addr)?.run().await
         }
     }
-}
-
-#[test]
-fn test_var() {
-    let root = env::var("ANKISYNCD_ROOT");
-    println!("{:?}", root);
 }

@@ -1,8 +1,8 @@
 use crate::{
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
+    parse::conf::{Paths, Settings},
     session::SessionManager,
     user::authenticate,
-    ROOT, SETTINGS,
 };
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
@@ -68,16 +68,22 @@ fn gen_hostkey(username: &str) -> String {
 async fn operation_hostkey(
     session_manager: web::Data<Mutex<SessionManager>>,
     hkreq: HostKeyRequest,
+    paths: Paths,
 ) -> Result<Option<HostKeyResponse>> {
-    if !authenticate(&hkreq) {
+    let auth_db_path = paths.auth_db_path;
+    let session_db_path = paths.session_db_path;
+    if !authenticate(&hkreq, auth_db_path) {
         return Ok(None);
     }
     let hkey = gen_hostkey(&hkreq.username);
 
-    let dir = ROOT.join(SETTINGS.read().unwrap().get_str("path.data_root").unwrap());
+    let dir = paths.data_root;
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path);
-    session_manager.lock().unwrap().save(hkey.clone(), session);
+    session_manager
+        .lock()
+        .unwrap()
+        .save(hkey.clone(), session, session_db_path);
 
     let hkres = HostKeyResponse { key: hkey };
     Ok(Some(hkres))
@@ -212,9 +218,10 @@ fn map_sync_req(method: &str) -> Option<Method> {
 }
 /// get hkey from client req bytes if there exist;
 /// if not ,get skey ,then get session
-pub fn get_session(
+pub fn get_session<P: AsRef<Path>>(
     session_manager: &web::Data<Mutex<SessionManager>>,
     map: HashMap<String, Vec<u8>>,
+    session_db_path: P,
 ) -> (Option<Session>, Option<String>) {
     let hkey = if let Some(hk) = map.get("k") {
         let hkey = String::from_utf8(hk.to_owned()).unwrap();
@@ -224,7 +231,7 @@ pub fn get_session(
     };
 
     let s = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().unwrap().load(hkey);
+        let s = session_manager.lock().unwrap().load(hkey, &session_db_path);
         s
         //    http forbidden if seesion is NOne ?
     } else {
@@ -236,7 +243,7 @@ pub fn get_session(
                     session_manager
                         .lock()
                         .unwrap()
-                        .load_from_skey(&skey)
+                        .load_from_skey(&skey, &session_db_path)
                         .unwrap(),
                 )
             }
@@ -291,15 +298,7 @@ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backen
                 .unwrap()
                 != sname
             {
-                let old = bd
-                    .lock()
-                    .unwrap()
-                    .col
-                    .lock()
-                    .unwrap()
-                    .take()
-                    .unwrap()
-                    .storage;
+                let old = bd.lock().unwrap().col.lock().unwrap().take().unwrap();
                 drop(old);
                 bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
             }
@@ -312,6 +311,7 @@ async fn get_resp_data(
     bd: &web::Data<Mutex<Backend>>,
     data: Option<Vec<u8>>,
     session_manager: web::Data<Mutex<SessionManager>>,
+    paths: Paths,
 ) -> Vec<u8> {
     let outdata = bd
         .lock()
@@ -324,18 +324,11 @@ async fn get_resp_data(
         .json;
     if mtd == Some(Method::HostKey) {
         let x = serde_json::from_slice(&data.clone().unwrap()).unwrap();
-        let resp = operation_hostkey(session_manager, x).await.unwrap();
+        let resp = operation_hostkey(session_manager, x, paths).await.unwrap();
         serde_json::to_vec(&resp.unwrap()).unwrap()
     } else if mtd == Some(Method::FullUpload) {
-        // reopen col
-        // let s = sn.unwrap();
-        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
         b"OK".to_vec()
     } else if mtd == Some(Method::FullDownload) {
-        // reopen col
-        // let s = sn.unwrap();
-        // bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
-        // outdata here is vec of path string
         let file = String::from_utf8(outdata).unwrap();
         let mut file_buffer = vec![];
         fs::File::open(file)
@@ -373,8 +366,9 @@ pub async fn sync_app(
         .map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
-
-    let (sn, _) = get_session(&session_manager, map);
+    let paths = Settings::new().unwrap().paths;
+    let session_db_path = &paths.session_db_path;
+    let (sn, _) = get_session(&session_manager, map, &session_db_path);
 
     match name.as_str() {
         // all normal sync url eg chunk..
@@ -385,7 +379,7 @@ pub async fn sync_app(
             add_col(mtd, sn.clone(), &bd);
 
             // response data
-            let outdata = get_resp_data(mtd, &bd, data, session_manager).await;
+            let outdata = get_resp_data(mtd, &bd, data, session_manager, paths).await;
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync

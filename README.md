@@ -83,13 +83,7 @@ i.e.create user account
 ankisyncctl.exe user -a xiaoshiyilang iampass
 ```
 
-more subcommand see help `ankisyncctl.exe -h`
-
-### ENV VAR Override
-currently var `ANKISYNCD_ROOT`,as server working dir where
-cover server data(collections),database(auth,session) and config file `Settings.toml`,is supported.
-if /home/ankiserver is set as working dir,cmd would be `export ANKISYNCD_ROOT=/home/ankiserver` on linux,
-default value would be current directory relavent to executable path.
+more subcommand see help `ankisyncd.exe -h`
 
 ### TODO
 
