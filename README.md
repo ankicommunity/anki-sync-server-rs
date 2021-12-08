@@ -67,7 +67,7 @@ used in LAN environment.open `Settings.toml` with text
 editor,modify following lines:
 ```
 #make ssl_enable true
-ssl_enable="false"
+ssl_enable=false
 # put cert and key file path 
 cert_file=""
 key_file=""
@@ -88,7 +88,6 @@ more subcommand see help `ankisyncd.exe -h`
 ### TODO
 
 - [ ] error handle
-- [ ]  builds for Linux and MacOS
 - [ ]  fix incorrect log time (when running on cross-compiled
 binary)
 - [ ]  add github repo link to log info
