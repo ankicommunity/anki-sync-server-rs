@@ -92,7 +92,8 @@ flags lgcc/static: sucessfully build,yet crash with bad system call,
 for GNU/Linux 2.6.32 in file info 
 2.openssl and ankisyncd by arm-linux-musleabihf-gcc: cannot
 compile openssl error: '-mfloat-abi=hard': selected processor lacks an FPU
-3.openssl by rpitools arm-linux-gnueabihf-gcc,ankisyncd by arm-linux-musleabihf-gcc:
+3.openssl by rpitools arm-linux-gnueabihf-gcc,ankisyncd by arm-linux-musleabihf-gcc ,
+before build ankisyncd ,set env var CC=rpitools arm-linux-gnueabihf-gcc
 sucessfully compiled and run well on termux(64bits)
 
 user manager addhere to env_variables auth_db path?
