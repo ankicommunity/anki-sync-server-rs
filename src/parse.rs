@@ -1,4 +1,4 @@
-use clap::{ App, AppSettings, Arg, ArgMatches};
+use clap::{ App, AppSettings, Arg, ArgMatches,crate_name,crate_version,crate_description};
 
 pub mod conf {
     use config::{Config, ConfigError, File};

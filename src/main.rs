@@ -23,8 +23,6 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Mutex;
 use user::create_account;
-#[macro_use]
-extern crate clap;
 /// "cert.pem" "key.pem"
 fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
     // load ssl keys
