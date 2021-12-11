@@ -5,6 +5,9 @@
 linker = "x86_64-apple-darwin14-clang"
 ar = "x86_64-apple-darwin14-ar"
 #Windows
+[target.x86_64-pc-windows-msvc]
+# statically link the C runtime (CRT)
+rustflags = ["-C", "target-feature=+crt-static"]
 [target.i686-pc-windows-msvc]
 linker = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\link.exe"
 # Linux
