@@ -87,7 +87,11 @@ pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) {
             // look up in db to check if user exist
             let user_list = user_list(&dbpath).unwrap();
             //  insert into db if username is not included indb query result
-            if !user_list.unwrap().contains(&name) {
+            if let Some(v) = user_list {
+                if !v.contains(&name) {
+                    add_user(&[name, pass], &dbpath).unwrap();
+                }
+            } else {
                 add_user(&[name, pass], &dbpath).unwrap();
             }
         } else {

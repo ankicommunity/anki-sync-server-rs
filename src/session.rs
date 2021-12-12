@@ -16,12 +16,6 @@ pub struct Session {
     skey: Option<String>,
     pub name: Option<String>,
     path: Option<PathBuf>,
-    version: Option<String>,
-    client_version: Option<String>,
-    /// from start
-    pub client_usn: i32,
-    pub client_newer: bool,
-    pub server_usn: i32,
 }
 
 impl Session {
@@ -53,11 +47,6 @@ impl Session {
             skey: Some(skey.to_owned()),
             name: Some(username.to_owned()),
             path: Some(user_path.into()),
-            version: None,
-            client_version: None,
-            client_usn: 0,
-            client_newer: false,
-            server_usn: 0,
         }
     }
     /// create session from username and user path
@@ -76,11 +65,6 @@ impl Session {
             skey: Some(skey[skey.chars().count() - 8..].to_owned()),
             name: Some(username.to_owned()),
             path: Some(user_path),
-            version: None,
-            client_version: None,
-            client_usn: 0,
-            client_newer: false,
-            server_usn: 0,
         }
     }
 }
