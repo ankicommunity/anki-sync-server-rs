@@ -51,7 +51,7 @@ fn add_user_to_auth_db<P: AsRef<Path>>(
     let conn = Connection::open(&dbpath).unwrap();
     conn.execute(sql, [username, pass_hash.as_str()]).unwrap();
     conn.close().unwrap();
-    let user_path = dbpath.as_ref().to_owned().parent().unwrap().join(username);
+    let user_path = dbpath.as_ref().to_owned().parent().unwrap().join("collections").join(username);
     create_user_dir(user_path).unwrap();
     Ok(())
 }
