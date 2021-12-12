@@ -1,0 +1,25 @@
+# for cross-compiling utility
+[address]
+host="0.0.0.0"
+port = "27701"
+# use current executable path ,only set filename
+[paths]
+# set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
+root_dir="."
+#following three lines are unnessesary and can be skipped
+ data_root = ""
+ auth_db_path = ""
+ session_db_path = ""
+        
+# user will be added 
+#into auth.db if not empty,and two fields must not be empty
+[account]
+username=""
+password=""
+        
+# embeded encrypted http /https credential if in Intranet
+# true to enable ssl or false
+[localcert]
+ssl_enable=false
+cert_file=""
+key_file=""
