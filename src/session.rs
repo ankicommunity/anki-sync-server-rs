@@ -70,7 +70,7 @@ impl Session {
         let result = hasher.finalize();
         let skey = format!("{:x}", &result);
         if !user_path.exists() {
-            fs::create_dir(user_path.clone()).unwrap();
+            fs::create_dir_all(user_path.clone()).unwrap();
         }
         Session {
             skey: Some(skey[skey.chars().count() - 8..].to_owned()),
