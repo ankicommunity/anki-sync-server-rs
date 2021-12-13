@@ -72,7 +72,7 @@ async fn operation_hostkey(
 ) -> Result<Option<HostKeyResponse>> {
     let auth_db_path = paths.auth_db_path;
     let session_db_path = paths.session_db_path;
-    if !authenticate(&hkreq, auth_db_path) {
+    if !authenticate(&hkreq, auth_db_path).unwrap() {
         return Ok(None);
     }
     let hkey = gen_hostkey(&hkreq.username);
