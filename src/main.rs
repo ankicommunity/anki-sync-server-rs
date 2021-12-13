@@ -55,11 +55,11 @@ async fn main() -> std::io::Result<()> {
     let conf_path = Path::new(matches.value_of("config").unwrap());
     create_conf(conf_path);
     // read config file
-    let conf = Settings::new().unwrap();
+    let conf = Settings::new().expect("Failed to populate settings from file.");
 
     // create db if not exist
     let auth_path = conf.paths.auth_db_path;
-    create_auth_db(&auth_path).unwrap();
+    create_auth_db(&auth_path).expect("Failed to create auth database.");
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
         user_manage(matches, auth_path);
