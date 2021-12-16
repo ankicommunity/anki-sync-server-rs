@@ -30,6 +30,28 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SyncError {
+    #[error("Sqlite error: {0}")]
+    Sqlite(#[from] rusqlite::Error),
+    #[error("IO error: {0}")]
+    IO(#[from] io::Error),
+    #[error("Json parsing error: {0}")]
+    JsonParsingError(#[from] serde_json::Error),
+    #[error("Zip parsing error: {0}")]
+    ZipParsingError(#[from] anki::media::sync::zip::result::ZipError),
+    #[error("Actix web error: {0}")]
+    ActixError(#[from] actix_web::Error),
+    #[error("Utf8 conversion error: {0}")]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+    #[error("Value error: {0}")]
+    ValueNotFound(String),
+    #[error("Unknown data user error")]
+    Unknown,
+}
+
 static OPERATIONS: [&str; 12] = [
     "hostKey",
     "meta",
@@ -72,7 +94,11 @@ async fn operation_hostkey(
 ) -> Result<Option<HostKeyResponse>> {
     let auth_db_path = paths.auth_db_path;
     let session_db_path = paths.session_db_path;
-    if !authenticate(&hkreq, auth_db_path).unwrap() {
+    let auth_success = match authenticate(&hkreq, auth_db_path) {
+        Ok(v) => v,
+        Err(e) => panic!("Could not authenticate: {}", e),
+    };
+    if !auth_success {
         return Ok(None);
     }
     let hkey = gen_hostkey(&hkreq.username);
@@ -81,8 +107,7 @@ async fn operation_hostkey(
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path);
     session_manager
-        .lock()
-        .unwrap()
+        .lock().expect("Could not lock mutex!")
         .save(hkey.clone(), session, session_db_path);
 
     let hkres = HostKeyResponse { key: hkey };
@@ -90,7 +115,7 @@ async fn operation_hostkey(
 }
 fn _decode(data: &[u8], compression: Option<&Vec<u8>>) -> Result<Vec<u8>> {
     let d = if let Some(x) = compression {
-        let c = String::from_utf8(x.to_vec()).unwrap();
+        let c = String::from_utf8(x.to_vec()).expect("Failed to convert data to utf8");
         if c == "1" {
             let mut d = GzDecoder::new(data);
             let mut b = vec![];
@@ -111,6 +136,7 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
         let content_disposition = field
             .content_disposition()
             .ok_or_else(|| HttpResponse::BadRequest().finish())?;
+        // TODO do no unwrap propoagate error upward (return server error 5xx?)
         let k = content_disposition.get_name().unwrap().to_owned();
 
         // Field in turn is stream of *Bytes* object
@@ -118,7 +144,7 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
         let mut bw = BufWriter::new(&mut v);
         while let Some(chunk) = field.try_next().await? {
             // must receive all chunks
-            bw.get_mut().write_all(&chunk).await.unwrap();
+            bw.get_mut().write_all(&chunk).await?;
         }
         map.insert(k, v);
     }
@@ -138,16 +164,16 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
+async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> Result<(usize, i32), SyncError> {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
-    let mut zip = zip::ZipArchive::new(reader).unwrap();
-    let mut meta_file = zip.by_name("_meta").unwrap();
+    let mut zip = zip::ZipArchive::new(reader)?;
+    let mut meta_file = zip.by_name("_meta").expect("Could not find '_meta' file in archive");
     let mut v = vec![];
-    meta_file.read_to_end(&mut v).unwrap();
+    meta_file.read_to_end(&mut v)?;
 
-    let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v).unwrap();
+    let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v)?;
 
     let mut media_to_remove = vec![];
     let mut media_to_add = vec![];
@@ -169,18 +195,21 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
 
     drop(meta_file);
     let mut usn = mm.last_usn();
-    fs::create_dir_all(&media_dir).unwrap();
+    fs::create_dir_all(&media_dir)?;
     for i in 0..zip.len() {
-        let mut file = zip.by_index(i).unwrap();
+        let mut file = zip.by_index(i)?;
         let name = file.name();
 
         if name == "_meta" {
             continue;
         }
-        let real_name = fmap.get(name).unwrap();
+        let real_name = match fmap.get(name) {
+            None => return Err(SyncError::ValueNotFound(format!("Could not find name {} in fmap", name))),
+            Some(s) => s,
+        };
 
         let mut data = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut data).unwrap();
+        file.read_to_end(&mut data)?;
         //    write zip data to media folder
         usn += 1;
         let add = mm.add_file(real_name, &data, usn).await;
@@ -197,7 +226,7 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
     if !media_to_add.is_empty() {
         mm.records_add(media_to_add);
     }
-    (processed_count, lastusn)
+    Ok((processed_count, lastusn))
 }
 fn map_sync_req(method: &str) -> Option<Method> {
     match method {
@@ -222,36 +251,37 @@ pub fn get_session<P: AsRef<Path>>(
     session_manager: &web::Data<Mutex<SessionManager>>,
     map: HashMap<String, Vec<u8>>,
     session_db_path: P,
-) -> (Option<Session>, Option<String>) {
+) -> Result<(Option<Session>, Option<String>), SyncError> {
     let hkey = if let Some(hk) = map.get("k") {
-        let hkey = String::from_utf8(hk.to_owned()).unwrap();
+        let hkey = String::from_utf8(hk.to_owned())?;
         Some(hkey)
     } else {
         None
     };
 
     let s = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().unwrap().load(hkey, &session_db_path);
+        let s = session_manager.lock().expect("Failed to lock mutex").load(hkey, &session_db_path);
         s
         //    http forbidden if seesion is NOne ?
     } else {
         match map.get("sk") {
             Some(skv) => {
-                let skey = String::from_utf8(skv.to_owned()).unwrap();
+                let skey = String::from_utf8(skv.to_owned())?;
 
-                Some(
-                    session_manager
-                        .lock()
-                        .unwrap()
-                        .load_from_skey(&skey, &session_db_path)
-                        .unwrap(),
-                )
+                let s = match session_manager
+                        .lock().expect("Failed to lock mutex")
+                        .load_from_skey(&skey, &session_db_path) {
+                            None => return Err(SyncError::ValueNotFound("Session not found".to_string())),
+                            Some(s) => s,
+                        };
+                Some(s)
             }
             None => None,
         }
     };
-    (s, hkey)
+    Ok((s, hkey))
 }
+
 fn get_request_data(
     mtd: Option<Method>,
     sn: Option<Session>,
@@ -340,13 +370,29 @@ async fn get_resp_data(
         outdata
     }
 }
+
+// TODO have an actix middleware handler that prints errors and returns code 500
+pub async fn sync_app_no_fail(
+    session_manager: web::Data<Mutex<SessionManager>>,
+    bd: web::Data<Mutex<Backend>>,
+    payload: Multipart,
+    req: HttpRequest,
+    web::Path((root, name)): web::Path<(String, String)>,
+) -> Result<HttpResponse> {
+
+    match sync_app(session_manager, bd, payload, req, web::Path((root, name))).await {
+        Ok(v) => Ok(v),
+        Err(e) => { eprintln!("Sync error: {}", e); Ok(HttpResponse::InternalServerError().finish())}
+    }
+
+}
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
     web::Path((_, name)): web::Path<(String, String)>,
-) -> Result<HttpResponse> {
+) -> Result<HttpResponse, SyncError> {
     let method = req.method().as_str();
     let mut map = HashMap::new();
     if method == "GET" {
@@ -368,7 +414,7 @@ pub async fn sync_app(
     // add session
     let paths = Settings::new().unwrap().paths;
     let session_db_path = &paths.session_db_path;
-    let (sn, _) = get_session(&session_manager, map, &session_db_path);
+    let (sn, _) = get_session(&session_manager, map, &session_db_path)?;
 
     match name.as_str() {
         // all normal sync url eg chunk..
@@ -402,8 +448,10 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) =
-                        adopt_media_changes_from_zip(&mm, data.unwrap()).await;
+                    let (procs_cnt, lastusn) = match adopt_media_changes_from_zip(&mm, data.unwrap()).await {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
+                    };
 
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {

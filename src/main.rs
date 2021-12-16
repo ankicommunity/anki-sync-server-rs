@@ -7,7 +7,7 @@ pub mod sync;
 pub mod user;
 use self::{
     session::SessionManager,
-    sync::{favicon, sync_app, welcome},
+    sync::{favicon, sync_app_no_fail, welcome},
     user::{create_auth_db, user_manage},
 };
 use actix_web::{middleware, web, App, HttpServer};
@@ -47,7 +47,7 @@ fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
     }
 }
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(),()> {
     //cli argument  parse
     let matches = parse();
     // set config path if parsed and write conf settings
@@ -62,12 +62,19 @@ async fn main() -> std::io::Result<()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
-        user_manage(matches, auth_path);
+
+        if let Err(e) = user_manage(matches, auth_path) {
+            eprintln!("Error managing users: {}", e);
+            return Err(());
+        };
         Ok(())
     } else {
         //    run ankisyncd without any sub-command
 
-        create_account(conf.account, auth_path);
+        if let Err(e) = create_account(conf.account, auth_path) {
+            eprintln!("Error creating account: {}", e);
+            return Err(());
+        }
         let ssl_config = load_ssl(conf.localcert);
         // parse ip address
         let addr = format!("{}:{}", conf.address.host, conf.address.port);
@@ -83,13 +90,18 @@ async fn main() -> std::io::Result<()> {
                 .app_data(bd.clone())
                 .service(welcome)
                 .service(favicon)
-                .service(web::resource("/{url}/{name}").to(sync_app))
+                .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
                 .wrap(middleware::Logger::default())
         });
-        if let Some(c) = ssl_config {
-            s.bind_rustls(addr, c)?.run().await
+        let result = if let Some(c) = ssl_config {
+            s.bind_rustls(addr, c).expect("Failed to bind with rustls.").run().await
         } else {
-            s.bind(addr)?.run().await
-        }
+            s.bind(addr).expect("Failed to bind, please check config.").run().await
+        };
+        if let Err(e) = result {
+            eprintln!("Bind error: {}", e);
+            return Err(());
+        };
+        Ok(())
     }
 }
