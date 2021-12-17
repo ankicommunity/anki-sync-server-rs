@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+mod error;
 mod db;
 mod media;
 pub mod parse;
