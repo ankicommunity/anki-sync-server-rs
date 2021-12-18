@@ -43,7 +43,7 @@ pub mod conf {
             // Start off by merging in the "default" configuration file
             s.merge(File::with_name("Settings"))?;
 
-            let root = s.get_str("paths.root_dir").unwrap();
+            let root = s.get_str("paths.root_dir")?;
             s.set(
                 "paths.data_root",
                 format!("{}", Path::new(&root).join("collections").display()),
@@ -89,7 +89,9 @@ cert_file=""
 key_file=""
 "#;
         if !p.exists() {
-            fs::write(&p, content).unwrap();
+            if let Err(_e) = fs::write(p, content) {
+                panic!("Cannot write config file at '{}'", p.display());
+            }
         }
     }
 }
