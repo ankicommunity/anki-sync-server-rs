@@ -11,6 +11,7 @@ repository = "https://github.com/ankicommunity/anki-sync-server-rs.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1.0.30"
 rustls = "0.18"
 actix-web = { version = "3", features = ["rustls"] }
 actix-multipart = "0.3"

@@ -13,7 +13,7 @@ pub fn fetchone<T: FromSql>(
 }
 /// open media db
 pub fn open_media_db<P: AsRef<Path>>(path: P) -> Result<Connection> {
-    let db = Connection::open(path).unwrap();
+    let db = Connection::open(path)?;
     db.execute_batch(include_str!("schema.sql"))?;
     Ok(db)
 }

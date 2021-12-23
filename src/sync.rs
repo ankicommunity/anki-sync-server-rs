@@ -30,6 +30,8 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
+use crate::error::ApplicationError;
+
 static OPERATIONS: [&str; 12] = [
     "hostKey",
     "meta",
@@ -69,28 +71,31 @@ async fn operation_hostkey(
     session_manager: web::Data<Mutex<SessionManager>>,
     hkreq: HostKeyRequest,
     paths: Paths,
-) -> Result<Option<HostKeyResponse>> {
+) -> Result<Option<HostKeyResponse>, ApplicationError> {
     let auth_db_path = paths.auth_db_path;
     let session_db_path = paths.session_db_path;
-    if !authenticate(&hkreq, auth_db_path) {
+    let auth_success = match authenticate(&hkreq, auth_db_path) {
+        Ok(v) => v,
+        Err(e) => panic!("Could not authenticate: {}", e),
+    };
+    if !auth_success {
         return Ok(None);
     }
     let hkey = gen_hostkey(&hkreq.username);
 
     let dir = paths.data_root;
     let user_path = Path::new(&dir).join(&hkreq.username);
-    let session = Session::new(&hkreq.username, user_path);
+    let session = Session::new(&hkreq.username, user_path)?;
     session_manager
-        .lock()
-        .unwrap()
-        .save(hkey.clone(), session, session_db_path);
+        .lock().expect("Could not lock mutex!")
+        .save(hkey.clone(), session, session_db_path)?;
 
     let hkres = HostKeyResponse { key: hkey };
     Ok(Some(hkres))
 }
 fn _decode(data: &[u8], compression: Option<&Vec<u8>>) -> Result<Vec<u8>> {
     let d = if let Some(x) = compression {
-        let c = String::from_utf8(x.to_vec()).unwrap();
+        let c = String::from_utf8(x.to_vec()).expect("Failed to convert data to utf8");
         if c == "1" {
             let mut d = GzDecoder::new(data);
             let mut b = vec![];
@@ -111,6 +116,7 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
         let content_disposition = field
             .content_disposition()
             .ok_or_else(|| HttpResponse::BadRequest().finish())?;
+        // TODO do no unwrap propoagate error upward (return server error 5xx?)
         let k = content_disposition.get_name().unwrap().to_owned();
 
         // Field in turn is stream of *Bytes* object
@@ -118,7 +124,7 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
         let mut bw = BufWriter::new(&mut v);
         while let Some(chunk) = field.try_next().await? {
             // must receive all chunks
-            bw.get_mut().write_all(&chunk).await.unwrap();
+            bw.get_mut().write_all(&chunk).await?;
         }
         map.insert(k, v);
     }
@@ -138,16 +144,16 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (usize, i32) {
+async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> Result<(usize, i32), ApplicationError> {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
-    let mut zip = zip::ZipArchive::new(reader).unwrap();
-    let mut meta_file = zip.by_name("_meta").unwrap();
+    let mut zip = zip::ZipArchive::new(reader)?;
+    let mut meta_file = zip.by_name("_meta").expect("Could not find '_meta' file in archive");
     let mut v = vec![];
-    meta_file.read_to_end(&mut v).unwrap();
+    meta_file.read_to_end(&mut v)?;
 
-    let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v).unwrap();
+    let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v)?;
 
     let mut media_to_remove = vec![];
     let mut media_to_add = vec![];
@@ -169,18 +175,21 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
 
     drop(meta_file);
     let mut usn = mm.last_usn();
-    fs::create_dir_all(&media_dir).unwrap();
+    fs::create_dir_all(&media_dir)?;
     for i in 0..zip.len() {
-        let mut file = zip.by_index(i).unwrap();
+        let mut file = zip.by_index(i)?;
         let name = file.name();
 
         if name == "_meta" {
             continue;
         }
-        let real_name = fmap.get(name).unwrap();
+        let real_name = match fmap.get(name) {
+            None => return Err(ApplicationError::ValueNotFound(format!("Could not find name {} in fmap", name))),
+            Some(s) => s,
+        };
 
         let mut data = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut data).unwrap();
+        file.read_to_end(&mut data)?;
         //    write zip data to media folder
         usn += 1;
         let add = mm.add_file(real_name, &data, usn).await;
@@ -197,7 +206,7 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> (
     if !media_to_add.is_empty() {
         mm.records_add(media_to_add);
     }
-    (processed_count, lastusn)
+    Ok((processed_count, lastusn))
 }
 fn map_sync_req(method: &str) -> Option<Method> {
     match method {
@@ -222,71 +231,85 @@ pub fn get_session<P: AsRef<Path>>(
     session_manager: &web::Data<Mutex<SessionManager>>,
     map: HashMap<String, Vec<u8>>,
     session_db_path: P,
-) -> (Option<Session>, Option<String>) {
+) -> Result<(Option<Session>, Option<String>), ApplicationError> {
     let hkey = if let Some(hk) = map.get("k") {
-        let hkey = String::from_utf8(hk.to_owned()).unwrap();
+        let hkey = String::from_utf8(hk.to_owned())?;
         Some(hkey)
     } else {
         None
     };
 
     let s = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().unwrap().load(hkey, &session_db_path);
+        let s = session_manager.lock().expect("Failed to lock mutex").load(hkey, &session_db_path)?;
         s
         //    http forbidden if seesion is NOne ?
     } else {
         match map.get("sk") {
             Some(skv) => {
-                let skey = String::from_utf8(skv.to_owned()).unwrap();
+                let skey = String::from_utf8(skv.to_owned())?;
 
-                Some(
-                    session_manager
-                        .lock()
-                        .unwrap()
-                        .load_from_skey(&skey, &session_db_path)
-                        .unwrap(),
-                )
+                let s = match session_manager
+                        .lock().expect("Failed to lock mutex")
+                        .load_from_skey(&skey, &session_db_path)? {
+                            None => return Err(ApplicationError::ValueNotFound("Session not found".to_string())),
+                            Some(s) => s,
+                        };
+                Some(s)
             }
             None => None,
         }
     };
-    (s, hkey)
+    Ok((s, hkey))
 }
+
+// TODO if data is not optional the handling must happen at higher level no use at handling option
+// everywhere
 fn get_request_data(
     mtd: Option<Method>,
     sn: Option<Session>,
     data: Option<Vec<u8>>,
-) -> Option<Vec<u8>> {
+) -> Result<Option<Vec<u8>>, ApplicationError> {
     if mtd == Some(Method::FullUpload) {
         //   write data from client to file ,as its db data,and return
         // its path in bytes
-        let session = sn.unwrap();
+        let session = match sn {
+            Some(s) => s,
+            None => return Err(ApplicationError::ValueNotFound("No session passed while getting request data.".to_string())),
+        };
         let colpath = format!("{}.tmp", session.get_col_path().display());
         let colp = Path::new(&colpath);
-        fs::write(colp, data.unwrap()).unwrap();
-        Some(colpath.as_bytes().to_owned())
+
+        let d = match data {
+            Some(d) => d,
+            None => return Err(ApplicationError::ValueNotFound("No data passed to get_request_data function".to_string())),
+        };
+        fs::write(colp, d)?;
+        Ok(Some(colpath.as_bytes().to_owned()))
     } else if mtd == Some(Method::FullDownload) {
         let v: Vec<u8> = Vec::new();
-        Some(v)
+        Ok(Some(v))
     } else {
-        data
+        Ok(data)
     }
 }
 /// open col and add col to backend
-fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) {
+// TODO if argument is not optional the handling must happen at higher level no use at handling option unwraping inside functions
+fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) -> Result<(), ApplicationError>{
     if mtd == Some(Method::Meta) {
-        let s = sn.unwrap();
-        if bd.lock().unwrap().col.lock().unwrap().is_none() {
-            bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+        let s = match sn {
+            Some(s) => s,
+            None => return Err(ApplicationError::ValueNotFound("No session passed while adding column.".to_string())),
+        };
+        if bd.lock().expect("Failed to lock mutex").col.lock().expect("Failed to lock mutex").is_none() {
+            bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
         } else {
             // reopen col(switch col_path)
-            let sname = s.clone().name.unwrap();
+            let sname = s.clone().name;
+            // TODO fix this horrible thing
             if *bd
-                .lock()
-                .unwrap()
+                .lock().expect("Failed to lock mutex")
                 .col
-                .lock()
-                .unwrap()
+                .lock().expect("Failed to lock mutex")
                 .as_ref()
                 .unwrap()
                 .col_path
@@ -298,12 +321,13 @@ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backen
                 .unwrap()
                 != sname
             {
-                let old = bd.lock().unwrap().col.lock().unwrap().take().unwrap();
+                let old = bd.lock().expect("Failed to lock mutex").col.lock().unwrap().take().unwrap();
                 drop(old);
-                bd.lock().unwrap().col = Arc::new(Mutex::new(Some(s.get_col())));
+                bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
             }
         }
     }
+    Ok(())
 }
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
@@ -340,18 +364,43 @@ async fn get_resp_data(
         outdata
     }
 }
+
+// TODO have an actix middleware handler that prints errors and returns code 500
+pub async fn sync_app_no_fail(
+    session_manager: web::Data<Mutex<SessionManager>>,
+    bd: web::Data<Mutex<Backend>>,
+    payload: Multipart,
+    req: HttpRequest,
+    web::Path((root, name)): web::Path<(String, String)>,
+) -> Result<HttpResponse> {
+
+    match sync_app(session_manager, bd, payload, req, web::Path((root, name))).await {
+        Ok(v) => Ok(v),
+        Err(e) => { eprintln!("Sync error: {}", e); Ok(HttpResponse::InternalServerError().finish())}
+    }
+
+}
+
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
     web::Path((_, name)): web::Path<(String, String)>,
-) -> Result<HttpResponse> {
+) -> Result<HttpResponse, ApplicationError> {
     let method = req.method().as_str();
     let mut map = HashMap::new();
     if method == "GET" {
-        let qs = urlparse(req.uri().path_and_query().unwrap().as_str());
-        let query = qs.get_parsed_query().unwrap();
+        let path_and_query = match req.uri().path_and_query() {
+            // TODO precise error type, valuenotfound is becoming a catch all
+            None => return Err(ApplicationError::ValueNotFound("Could not get path and query from HTTP request".to_string())),
+            Some(s) => s,
+        };
+        let qs = urlparse(path_and_query.as_str());
+        let query = match qs.get_parsed_query() {
+            Some(q) => q,
+            None => return Err(ApplicationError::ValueNotFound("Empty query in HTTP request".to_string())),
+        };
         for (k, v) in query {
             map.insert(k, v.join("").as_bytes().to_vec());
         }
@@ -361,6 +410,7 @@ pub async fn sync_app(
     };
     let data_frame = map.get("data");
     // not unzip if compression is None ?
+    // TODO remove unwrap here
     let data = data_frame
         .as_ref()
         .map(|dt| _decode(dt, map.get("c")).unwrap());
@@ -368,15 +418,15 @@ pub async fn sync_app(
     // add session
     let paths = Settings::new().unwrap().paths;
     let session_db_path = &paths.session_db_path;
-    let (sn, _) = get_session(&session_manager, map, &session_db_path);
+    let (sn, _) = get_session(&session_manager, map, &session_db_path)?;
 
     match name.as_str() {
         // all normal sync url eg chunk..
         op if OPERATIONS.contains(&op) => {
             // get request data
             let mtd = map_sync_req(op);
-            let data = get_request_data(mtd, sn.clone(), data.clone());
-            add_col(mtd, sn.clone(), &bd);
+            let data = get_request_data(mtd, sn.clone(), data.clone())?;
+            add_col(mtd, sn.clone(), &bd)?;
 
             // response data
             let outdata = get_resp_data(mtd, &bd, data, session_manager, paths).await;
@@ -385,16 +435,19 @@ pub async fn sync_app(
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
             // session None is forbidden
-            let session = sn.clone().unwrap();
+            let session = match sn.clone() {
+                Some(s) => s,
+                None => return Err(ApplicationError::ValueNotFound("No session passed for media sync".to_string())),
+            };
             let (md, mf) = session.get_md_mf();
 
-            let mm = MediaManager::new(mf, md).unwrap();
+            let mm = MediaManager::new(mf, md)?;
             match media_op {
                 "begin" => {
                     let lastusn = mm.last_usn();
                     let sbr = SyncBeginResult {
                         data: Some(SyncBeginResponse {
-                            sync_key: sn.clone().unwrap().skey(),
+                            sync_key: session.skey(),
                             usn: lastusn,
                         }),
                         err: String::new(),
@@ -402,8 +455,10 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) =
-                        adopt_media_changes_from_zip(&mm, data.unwrap()).await;
+                    let (procs_cnt, lastusn) = match adopt_media_changes_from_zip(&mm, data.unwrap()).await {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
+                    };
 
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {
