@@ -1,6 +1,6 @@
 # for cross compile use
 
-# default current dir anki=server-rs/
+# cp cc.sh and config to dir ..,then change dir to ..
 
 # for aarch64
 # echo "cross-compile for aarch64"
