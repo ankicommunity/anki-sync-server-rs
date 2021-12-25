@@ -1,5 +1,5 @@
+use config::ConfigError;
 use thiserror::Error;
-
 #[derive(Error, Debug)]
 pub enum ApplicationError {
     #[error("Sqlite error: {0}")]
@@ -19,6 +19,10 @@ pub enum ApplicationError {
     Utf8Error(#[from] std::string::FromUtf8Error),
     #[error("Value error: {0}")]
     ValueNotFound(String),
+    #[error("Config error {0}")]
+    Config(#[from] ConfigError),
+    #[error("rustls error {0}")]
+    TLS(#[from] rustls::TLSError),
     #[error("Unknown data user error")]
     Unknown,
 }

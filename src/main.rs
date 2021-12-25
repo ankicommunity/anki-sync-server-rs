@@ -1,12 +1,12 @@
 #![forbid(unsafe_code)]
 mod error;
-mod db;
 mod media;
 pub mod parse;
 pub mod session;
 pub mod sync;
 pub mod user;
 use self::{
+    error::ApplicationError,
     session::SessionManager,
     sync::{favicon, sync_app_no_fail, welcome},
     user::{create_auth_db, user_manage},
@@ -25,7 +25,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use user::create_account;
 /// "cert.pem" "key.pem"
-fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
+fn load_ssl(localcert: LocalCert) -> Result<Option<ServerConfig>, ApplicationError> {
     // load ssl keys
     let enable = localcert.ssl_enable;
     if enable {
@@ -33,22 +33,22 @@ fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
         let key = localcert.key_file;
 
         let mut config = ServerConfig::new(NoClientAuth::new());
-        let cert_file = &mut BufReader::new(File::open(cert).unwrap());
-        let key_file = &mut BufReader::new(File::open(key).unwrap());
+        let cert_file = &mut BufReader::new(File::open(cert)?);
+        let key_file = &mut BufReader::new(File::open(key)?);
         let cert_chain = certs(cert_file).unwrap();
         let mut keys = pkcs8_private_keys(key_file).unwrap();
         if keys.is_empty() {
             eprintln!("Could not locate PKCS 8 private keys.");
             std::process::exit(1);
         }
-        config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
-        Some(config)
+        config.set_single_cert(cert_chain, keys.remove(0))?;
+        Ok(Some(config))
     } else {
-        None
+        Ok(None)
     }
 }
 #[actix_web::main]
-async fn main() -> Result<(),()> {
+async fn main() -> Result<(), ()> {
     //cli argument  parse
     let matches = parse();
     // set config path if parsed and write conf settings
@@ -63,7 +63,6 @@ async fn main() -> Result<(),()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
-
         if let Err(e) = user_manage(matches, auth_path) {
             eprintln!("Error managing users: {}", e);
             return Err(());
@@ -76,7 +75,7 @@ async fn main() -> Result<(),()> {
             eprintln!("Error creating account: {}", e);
             return Err(());
         }
-        let ssl_config = load_ssl(conf.localcert);
+        let ssl_config = load_ssl(conf.localcert).expect("load tls error");
         // parse ip address
         let addr = format!("{}:{}", conf.address.host, conf.address.port);
 
@@ -95,9 +94,15 @@ async fn main() -> Result<(),()> {
                 .wrap(middleware::Logger::default())
         });
         let result = if let Some(c) = ssl_config {
-            s.bind_rustls(addr, c).expect("Failed to bind with rustls.").run().await
+            s.bind_rustls(addr, c)
+                .expect("Failed to bind with rustls.")
+                .run()
+                .await
         } else {
-            s.bind(addr).expect("Failed to bind, please check config.").run().await
+            s.bind(addr)
+                .expect("Failed to bind, please check config.")
+                .run()
+                .await
         };
         if let Err(e) = result {
             eprintln!("Bind error: {}", e);

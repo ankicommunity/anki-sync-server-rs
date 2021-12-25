@@ -1,9 +1,10 @@
-use crate::db::fetchone;
 use crate::parse::conf::Account;
 use anki::sync::http::HostKeyRequest;
 use clap::ArgMatches;
 use rand::{rngs::OsRng, RngCore};
+use rusqlite::params;
 use rusqlite::Connection;
+use rusqlite::OptionalExtension;
 use sha2::{Digest, Sha256};
 #[allow(unused_imports)]
 use std::env;
@@ -24,14 +25,12 @@ pub enum UserError {
     Unknown,
 }
 
-
 impl From<(rusqlite::Connection, rusqlite::Error)> for UserError {
     fn from(error: (rusqlite::Connection, rusqlite::Error)) -> Self {
         let (_, err) = error;
         UserError::Sqlite(err)
     }
 }
-
 
 fn create_salt() -> String {
     // create salt
@@ -43,7 +42,7 @@ fn set_password_for_user<P: AsRef<Path>>(
     username: &str,
     new_password: &str,
     dbpath: P,
-) -> Result<(),UserError> {
+) -> Result<(), UserError> {
     if user_exists(username, &dbpath)? {
         let salt = create_salt();
         let hash = create_pass_hash(username, new_password, &salt);
@@ -74,7 +73,7 @@ fn add_user_to_auth_db<P: AsRef<Path>>(
     conn.execute(sql, [username, pass_hash.as_str()])?;
     conn.close()?;
     let user_path = match dbpath.as_ref().to_owned().parent() {
-        Some(p) => p.join("collections").join(username), 
+        Some(p) => p.join("collections").join(username),
         None => return Err(UserError::Unknown),
     };
     create_user_dir(user_path)?;
@@ -100,7 +99,7 @@ fn del_user<P: AsRef<Path>>(username: &str, dbpath: P) -> Result<(), UserError> 
     Ok(())
 }
 // insert record into db if username is not empty in Settings.toml
-pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) -> Result<(), UserError>{
+pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) -> Result<(), UserError> {
     // insert record into db if username is not empty,
     let name = account.username;
     let pass = account.password;
@@ -135,7 +134,7 @@ pub fn create_auth_db<P: AsRef<Path>>(p: P) -> Result<(), UserError> {
 }
 
 /// command-line user management
-pub fn user_manage<P: AsRef<Path>>(matches: ArgMatches, dbpath: P) -> Result<(), UserError>{
+pub fn user_manage<P: AsRef<Path>>(matches: ArgMatches, dbpath: P) -> Result<(), UserError> {
     match matches.subcommand() {
         Some(("user", user_mach)) => {
             if user_mach.is_present("add") {
@@ -183,10 +182,11 @@ pub fn user_list<P: AsRef<Path>>(dbpath: P) -> Result<Option<Vec<String>>, UserE
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map([], |r| r.get(0))?;
 
-    let v1 = rows
-        .into_iter()
-        .collect::<Result<Vec<String>,_>>();
-    let v = match v1 { Ok(a) => a, Err(e) => return Err(UserError::Sqlite(e)),};
+    let v1 = rows.into_iter().collect::<Result<Vec<String>, _>>();
+    let v = match v1 {
+        Ok(a) => a,
+        Err(e) => return Err(UserError::Sqlite(e)),
+    };
     let r = if v.is_empty() { None } else { Some(v) };
     Ok(r)
 }
@@ -213,12 +213,17 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
     pass_hash
 }
 
-pub fn authenticate<P: AsRef<Path>>(hkreq: &HostKeyRequest, auth_db_path: P) -> Result<bool,UserError> {
+pub fn authenticate<P: AsRef<Path>>(
+    hkreq: &HostKeyRequest,
+    auth_db_path: P,
+) -> std::result::Result<bool, UserError> {
     let auth_db = auth_db_path.as_ref();
 
     let conn = Connection::open(auth_db)?;
     let sql = "SELECT hash FROM auth WHERE username=?";
-    let db_hash: Option<String> = fetchone(&conn, sql, Some(&hkreq.username))?;
+    let db_hash: Option<String> = conn
+        .query_row(sql, params![&hkreq.username], |row| row.get(0))
+        .optional()?;
     conn.close()?;
     if let Some(expect_value) = db_hash {
         let salt = &expect_value[(&expect_value.chars().count() - 16)..];

@@ -1,3 +1,4 @@
+use crate::error::ApplicationError;
 use anki::collection::{open_collection, Collection};
 use anki::i18n::I18n;
 use anki::log;
@@ -11,7 +12,6 @@ use std::fs;
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
-use crate::error::ApplicationError;
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -84,15 +84,16 @@ fn map_skey_session(session: Session, skey: &str) -> io::Result<Session> {
 }
 
 fn to_vec(row: &Row) -> Result<Vec<String>, rusqlite::Error> {
-    Ok(vec![
-        row.get(0)?,
-        row.get(1)?,
-        row.get(2)?,
-    ])
+    Ok(vec![row.get(0)?, row.get(1)?, row.get(2)?])
 }
-fn query_vec(sql: &str, conn: &Connection, query_entry: &str) -> Result<Option<Vec<String>>, ApplicationError> {
+fn query_vec(
+    sql: &str,
+    conn: &Connection,
+    query_entry: &str,
+) -> Result<Option<Vec<String>>, ApplicationError> {
     let mut stmt = conn.prepare(sql)?;
-    let r = stmt.query_row([query_entry], |row| to_vec(row))
+    let r = stmt
+        .query_row([query_entry], |row| to_vec(row))
         .optional()?;
     Ok(r)
 }
@@ -119,7 +120,7 @@ impl SessionManager {
         &mut self,
         skey: &str,
         session_db_path: P,
-    ) -> Result<Option<Session>, ApplicationError>{
+    ) -> Result<Option<Session>, ApplicationError> {
         let mut sesss = self
             .clone()
             .sessions
@@ -133,15 +134,25 @@ impl SessionManager {
             let conn = Connection::open(&session_db_path)?;
             let sql = "SELECT hkey, username, path FROM session WHERE skey=?";
             let v = query_vec(sql, &conn, skey)?;
-            if let Err((_,e)) = conn.close() { return Err(ApplicationError::Sqlite(e))}
+            if let Err((_, e)) = conn.close() {
+                return Err(ApplicationError::Sqlite(e));
+            }
             if let Some(mut vc) = v {
                 let username = match vc.get(1) {
                     Some(u) => u,
-                    None => return Err(ApplicationError::ValueNotFound("username not found in matching sql result".to_string())),
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "username not found in matching sql result".to_string(),
+                        ))
+                    }
                 };
                 let path = match vc.get(2) {
                     Some(p) => p,
-                    None => return Err(ApplicationError::ValueNotFound("path not found in matching sql result".to_string())),
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "path not found in matching sql result".to_string(),
+                        ))
+                    }
                 };
                 let session = Session::from(skey, username, path);
                 // add into hashmap
@@ -154,7 +165,12 @@ impl SessionManager {
             }
         }
     }
-    pub fn save<P: AsRef<Path>>(&mut self, hkey: String, session: Session, session_db_path: P) -> Result<(), ApplicationError>{
+    pub fn save<P: AsRef<Path>>(
+        &mut self,
+        hkey: String,
+        session: Session,
+        session_db_path: P,
+    ) -> Result<(), ApplicationError> {
         self.sessions.insert(hkey.clone(), session.clone());
         // db insert ops
         let session_db = session_db_path.as_ref();
@@ -177,11 +193,17 @@ impl SessionManager {
                 &format!("{}", session.path.display()),
             ],
         )?;
-        if let Err((_,e)) = conn.close() { return Err(ApplicationError::Sqlite(e));};
+        if let Err((_, e)) = conn.close() {
+            return Err(ApplicationError::Sqlite(e));
+        };
         Ok(())
     }
 
-    pub fn load<P: AsRef<Path>>(&mut self, hkey: &str, session_db_path: P) -> Result<Option<Session>, ApplicationError> {
+    pub fn load<P: AsRef<Path>>(
+        &mut self,
+        hkey: &str,
+        session_db_path: P,
+    ) -> Result<Option<Session>, ApplicationError> {
         let sess = self.clone().sessions.remove(hkey);
 
         if let Some(session) = sess {
@@ -200,23 +222,36 @@ impl SessionManager {
 
             let sql1 = "SELECT skey, username, path FROM session WHERE hkey=?";
             let o = query_vec(sql1, &conn, hkey)?;
-            if let Err((_,e)) = conn.close() { return Err(ApplicationError::Sqlite(e));};
+            if let Err((_, e)) = conn.close() {
+                return Err(ApplicationError::Sqlite(e));
+            };
             if let Some(v) = o {
                 let skey = match v.get(0) {
                     Some(s) => s,
-                    None => return Err(ApplicationError::ValueNotFound("skey not found in matching sql result".to_string())),
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "skey not found in matching sql result".to_string(),
+                        ))
+                    }
                 };
                 let username = match v.get(1) {
                     Some(u) => u,
-                    None => return Err(ApplicationError::ValueNotFound("username not found in matching sql result".to_string())),
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "username not found in matching sql result".to_string(),
+                        ))
+                    }
                 };
                 let path = match v.get(2) {
                     Some(p) => p,
-                    None => return Err(ApplicationError::ValueNotFound("path not found in matching sql result".to_string())),
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "path not found in matching sql result".to_string(),
+                        ))
+                    }
                 };
 
-                let session =
-                    Session::from(skey, username, path);
+                let session = Session::from(skey, username, path);
                 self.borrow_mut()
                     .sessions
                     .insert(hkey.to_owned(), session.clone());
