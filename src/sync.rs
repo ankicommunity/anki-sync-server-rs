@@ -17,7 +17,7 @@ use anki::{
     sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
 };
-use std::{io, path::PathBuf, sync::Arc};
+use std::{io, sync::Arc};
 
 use crate::error::ApplicationError;
 use crate::session::Session;
@@ -372,7 +372,7 @@ fn add_col(
     Ok(())
 }
 /// .../username/collection.anki2 from backend'collection
-fn filter_usrname(path: &PathBuf) -> String {
+fn filter_usrname(path: &Path) -> String {
     path.parent()
         .unwrap()
         .file_name()

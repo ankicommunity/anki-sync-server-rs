@@ -93,7 +93,7 @@ fn query_vec(
 ) -> Result<Option<Vec<String>>, ApplicationError> {
     let mut stmt = conn.prepare(sql)?;
     let r = stmt
-        .query_row([query_entry], |row| to_vec(row))
+        .query_row([query_entry], to_vec)
         .optional()?;
     Ok(r)
 }

@@ -174,7 +174,7 @@ impl MediaManager {
             .optional();
         match r {
             Ok(ret) => Ok(ret.unwrap()),
-            Err(e) => Err(ApplicationError::Sqlite(e.into())),
+            Err(e) => Err(ApplicationError::Sqlite(e)),
         }
     }
     pub fn last_usn(&self) -> Result<i32, ApplicationError> {
@@ -191,7 +191,7 @@ impl MediaManager {
                     Ok(0)
                 }
             }
-            Err(e) => Err(ApplicationError::Sqlite(e.into())),
+            Err(e) => Err(ApplicationError::Sqlite(e)),
         }
     }
     /// insert records to media db

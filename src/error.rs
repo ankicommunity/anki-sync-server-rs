@@ -22,7 +22,7 @@ pub enum ApplicationError {
     #[error("Config error {0}")]
     Config(#[from] ConfigError),
     #[error("rustls error {0}")]
-    TLS(#[from] rustls::TLSError),
+    Tls(#[from] rustls::TLSError),
     #[error("Unknown data user error")]
     Unknown,
 }
