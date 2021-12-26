@@ -62,8 +62,10 @@ Use the same base url for both the `Sync url` and the `Media sync url`, but appe
 Even though the AnkiDroid interface will request an email address, this is not required; it will simply be the username you configured with `ankisyncd.exe user -a`.
 #### encrypted HTTP connection
 Due to Android policy change,some ankidroid versions need
-https transportation.Ankisyncd allow embeded self-signed certicate verify
-used in LAN environment.open `Settings.toml` with text
+https transportation.Though we recommend reverse proxies such as `Nginx` and `Caddy` to perform secure connection,
+ankisyncd allow for embeded self-signed certicate 
+used in LAN environment.If you want to use that feature,you must run cargo build command with flag
+ `--feature rustls`.Then open `Settings.toml` with text
 editor,modify following lines:
 ```
 #make ssl_enable true

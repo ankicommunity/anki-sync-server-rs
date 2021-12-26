@@ -80,8 +80,10 @@ root_dir="."
 [account]
 username=""
 password=""
-        
-# embeded encrypted http /https credential if in Intranet
+
+# Only in a situation running cargo build command with flag --feature rustls
+# can this take effect.
+# embeded encrypted http connection if in LAN
 # true to enable ssl or false
 [localcert]
 ssl_enable=false
