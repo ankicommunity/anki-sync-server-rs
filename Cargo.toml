@@ -12,8 +12,7 @@ repository = "https://github.com/ankicommunity/anki-sync-server-rs.git"
 
 [dependencies]
 thiserror = "1.0.30"
-rustls = "0.18"
-actix-web = { version = "3", features = ["rustls"] }
+actix-web = { version = "3", features=["rustls"]}
 actix-multipart = "0.3"
 async-std = "1.8"
 futures-util = "0.3"
@@ -35,5 +34,6 @@ clap="3.0.0-beta.5"
 version = "0.25.1"
 features = ["bundled"]
 
-
-
+[dependencies.rustls]
+optional = true
+version = "0.18"

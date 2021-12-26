@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
-mod error;
+#![allow(unused_imports)]
 mod db;
+mod error;
 mod media;
 pub mod parse;
 pub mod session;
@@ -17,7 +18,9 @@ use parse::{
     conf::{create_conf, LocalCert, Settings},
     parse,
 };
+#[cfg(feature = "rustls")]
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
+#[cfg(feature = "rustls")]
 use rustls::{NoClientAuth, ServerConfig};
 use std::fs::File;
 use std::io::BufReader;
@@ -25,13 +28,12 @@ use std::path::Path;
 use std::sync::Mutex;
 use user::create_account;
 /// "cert.pem" "key.pem"
+#[cfg(feature = "rustls")]
 fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
     // load ssl keys
-    let enable = localcert.ssl_enable;
-    if enable {
+    if localcert.ssl_enable {
         let cert = localcert.cert_file;
         let key = localcert.key_file;
-
         let mut config = ServerConfig::new(NoClientAuth::new());
         let cert_file = &mut BufReader::new(File::open(cert).unwrap());
         let key_file = &mut BufReader::new(File::open(key).unwrap());
@@ -47,8 +49,53 @@ fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
         None
     }
 }
+async fn server_builder(addr: String) -> Result<(), ()> {
+    std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
+    env_logger::init();
+    let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
+    let tr = I18n::template_only();
+    let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
+    HttpServer::new(move || {
+        App::new()
+            .app_data(session_manager.clone())
+            .app_data(bd.clone())
+            .service(welcome)
+            .service(favicon)
+            .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
+            .wrap(middleware::Logger::default())
+    })
+    .bind(addr)
+    .expect("Failed to bind with rustls.")
+    .run()
+    .await
+    .expect("server build error");
+    Ok(())
+}
+#[cfg(feature = "rustls")]
+async fn server_builder_tls(addr: String, c: ServerConfig) -> Result<(), ()> {
+    std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
+    env_logger::init();
+    let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
+    let tr = I18n::template_only();
+    let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
+    HttpServer::new(move || {
+        App::new()
+            .app_data(session_manager.clone())
+            .app_data(bd.clone())
+            .service(welcome)
+            .service(favicon)
+            .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
+            .wrap(middleware::Logger::default())
+    })
+    .bind_rustls(addr, c)
+    .expect("Failed to bind with rustls.")
+    .run()
+    .await
+    .expect("server build error");
+    Ok(())
+}
 #[actix_web::main]
-async fn main() -> Result<(),()> {
+async fn main() -> Result<(), ()> {
     //cli argument  parse
     let matches = parse();
     // set config path if parsed and write conf settings
@@ -63,7 +110,6 @@ async fn main() -> Result<(),()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
-
         if let Err(e) = user_manage(matches, auth_path) {
             eprintln!("Error managing users: {}", e);
             return Err(());
@@ -76,33 +122,17 @@ async fn main() -> Result<(),()> {
             eprintln!("Error creating account: {}", e);
             return Err(());
         }
-        let ssl_config = load_ssl(conf.localcert);
-        // parse ip address
         let addr = format!("{}:{}", conf.address.host, conf.address.port);
-
-        std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-        env_logger::init();
-        let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
-        let tr = I18n::template_only();
-        let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
-        let s = HttpServer::new(move || {
-            App::new()
-                .app_data(session_manager.clone())
-                .app_data(bd.clone())
-                .service(welcome)
-                .service(favicon)
-                .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
-                .wrap(middleware::Logger::default())
-        });
-        let result = if let Some(c) = ssl_config {
-            s.bind_rustls(addr, c).expect("Failed to bind with rustls.").run().await
-        } else {
-            s.bind(addr).expect("Failed to bind, please check config.").run().await
-        };
-        if let Err(e) = result {
-            eprintln!("Bind error: {}", e);
-            return Err(());
-        };
+        let lc = conf.localcert;
+        let enable = lc.ssl_enable;
+        #[cfg(feature = "rustls")]
+        let tls_conf = load_ssl(lc);
+        if enable {
+            #[cfg(feature = "rustls")]
+            server_builder_tls(addr, tls_conf.unwrap()).await?;
+            return Ok(());
+        }
+        server_builder(addr).await?;
         Ok(())
     }
 }
