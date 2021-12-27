@@ -10,7 +10,7 @@ pub mod conf {
         pub host: String,
         pub port: String,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, Clone)]
     pub struct Paths {
         pub root_dir: String,
         pub data_root: String,

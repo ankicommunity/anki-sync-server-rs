@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension, Result};
 
-use crate:: error::ApplicationError;
+use crate::error::ApplicationError;
 #[allow(unused_imports)]
 use anki::media::{
     files::{add_data_to_folder_uniquely, data_for_file, hex, normalize_filename, sha1_of_data},
@@ -17,8 +17,8 @@ use std::{
 
 static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
 static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
-   /// open media db
-   pub fn open_media_db<P: AsRef<Path>>(path: P) -> Result<Connection> {
+/// open media db
+pub fn open_media_db<P: AsRef<Path>>(path: P) -> Result<Connection> {
     let db = Connection::open(path)?;
     db.execute_batch(include_str!("schema.sql"))?;
     Ok(db)
@@ -142,7 +142,7 @@ impl MediaManager {
 
         Ok(Some(w.into_inner()))
     }
- 
+
     pub fn new<P, P2>(media_folder: P, media_db: P2) -> Result<Self>
     where
         P: Into<PathBuf>,

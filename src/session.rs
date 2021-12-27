@@ -92,9 +92,7 @@ fn query_vec(
     query_entry: &str,
 ) -> Result<Option<Vec<String>>, ApplicationError> {
     let mut stmt = conn.prepare(sql)?;
-    let r = stmt
-        .query_row([query_entry], to_vec)
-        .optional()?;
+    let r = stmt.query_row([query_entry], to_vec).optional()?;
     Ok(r)
 }
 #[derive(Debug, Clone)]
@@ -198,7 +196,8 @@ impl SessionManager {
         };
         Ok(())
     }
-
+    /// take session from session manager according to hkey,
+    /// if not exist in manager,then look up session from database according to hkey
     pub fn load<P: AsRef<Path>>(
         &mut self,
         hkey: &str,
