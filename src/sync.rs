@@ -286,16 +286,15 @@ async fn get_session(
     if mtd == Some(Method::HostKey) {
         let hkreq = serde_json::from_slice(&data)?;
         let (hkr, session) = operation_hostkey(session_manager.clone(), hkreq, paths).await?;
-        return Ok((session, data, Some(hkr)));
-    } else {
-        if let Some(session) = s {
-            return Ok((session, data, None));
+         Ok((session, data, Some(hkr)))
+    } else  if let Some(session) = s {
+             Ok((session, data, None))
         } else {
-            return Err(ApplicationError::ValueNotFound(
+            Err(ApplicationError::ValueNotFound(
                 "Session not found".to_string(),
-            ));
+            ))
         }
-    };
+    
 }
 
 fn get_request_data(
@@ -382,7 +381,7 @@ async fn get_resp_data(
         .expect("Failed to lock mutex")
         .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
             method: mtd.unwrap().into(),
-            data: data.clone(),
+            data,
         })
         .unwrap()
         .json;
