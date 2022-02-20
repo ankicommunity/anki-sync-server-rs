@@ -14,8 +14,10 @@ use self::{
 };
 use actix_web::{middleware, web, App, HttpServer};
 use anki::{backend::Backend, i18n::I18n};
+#[cfg(feature = "rustls")]
+use parse::conf::LocalCert;
 use parse::{
-    conf::{create_conf, LocalCert, Settings},
+    conf::{create_conf, Settings},
     parse,
 };
 #[cfg(feature = "rustls")]
@@ -123,13 +125,20 @@ async fn main() -> Result<(), ()> {
             return Err(());
         }
         let addr = format!("{}:{}", conf.address.host, conf.address.port);
+        #[cfg(feature = "rustls")]
         let lc = conf.localcert;
+        #[cfg(feature = "rustls")]
         let enable = lc.ssl_enable;
         #[cfg(feature = "rustls")]
         let tls_conf = load_ssl(lc);
-        if enable {
+        if cfg!(feature = "rustls") {
             #[cfg(feature = "rustls")]
-            server_builder_tls(addr, tls_conf.unwrap()).await?;
+            if enable {
+                #[cfg(feature = "rustls")]
+                server_builder_tls(addr, tls_conf.unwrap()).await?;
+            } else {
+                server_builder(addr.clone()).await?;
+            }
             return Ok(());
         }
         server_builder(addr).await?;

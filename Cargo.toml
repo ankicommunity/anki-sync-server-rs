@@ -10,6 +10,8 @@ keywords = ["Anki","actix-web","server"]
 repository = "https://github.com/ankicommunity/anki-sync-server-rs.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+build = "build.rs"
+
 [dependencies]
 thiserror = "1.0.30"
 actix-web = { version = "3", features=["rustls"]}
