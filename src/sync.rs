@@ -19,6 +19,7 @@ use anki::{
 };
 use std::{io, sync::Arc};
 
+use crate::error::ApplicationError;
 use crate::session::Session;
 use flate2::read::GzDecoder;
 use futures_util::{AsyncWriteExt, TryStreamExt as _};
@@ -30,7 +31,6 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
-use crate::error::ApplicationError;
 
 static OPERATIONS: [&str; 12] = [
     "hostKey",
@@ -87,7 +87,8 @@ async fn operation_hostkey(
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path)?;
     session_manager
-        .lock().expect("Could not lock mutex!")
+        .lock()
+        .expect("Could not lock mutex!")
         .save(hkey.clone(), session, session_db_path)?;
 
     let hkres = HostKeyResponse { key: hkey };
@@ -144,12 +145,17 @@ pub async fn welcome() -> Result<HttpResponse> {
 /// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
 ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
 /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> Result<(usize, i32), ApplicationError> {
+async fn adopt_media_changes_from_zip(
+    mm: &MediaManager,
+    zip_data: Vec<u8>,
+) -> Result<(usize, i32), ApplicationError> {
     let media_dir = &mm.media_folder;
     let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
     let mut zip = zip::ZipArchive::new(reader)?;
-    let mut meta_file = zip.by_name("_meta").expect("Could not find '_meta' file in archive");
+    let mut meta_file = zip
+        .by_name("_meta")
+        .expect("Could not find '_meta' file in archive");
     let mut v = vec![];
     meta_file.read_to_end(&mut v)?;
 
@@ -184,7 +190,12 @@ async fn adopt_media_changes_from_zip(mm: &MediaManager, zip_data: Vec<u8>) -> R
             continue;
         }
         let real_name = match fmap.get(name) {
-            None => return Err(ApplicationError::ValueNotFound(format!("Could not find name {} in fmap", name))),
+            None => {
+                return Err(ApplicationError::ValueNotFound(format!(
+                    "Could not find name {} in fmap",
+                    name
+                )))
+            }
             Some(s) => s,
         };
 
@@ -240,7 +251,10 @@ pub fn get_session<P: AsRef<Path>>(
     };
 
     let s = if let Some(hkey) = &hkey {
-        let s = session_manager.lock().expect("Failed to lock mutex").load(hkey, &session_db_path)?;
+        let s = session_manager
+            .lock()
+            .expect("Failed to lock mutex")
+            .load(hkey, &session_db_path)?;
         s
         //    http forbidden if seesion is NOne ?
     } else {
@@ -249,11 +263,17 @@ pub fn get_session<P: AsRef<Path>>(
                 let skey = String::from_utf8(skv.to_owned())?;
 
                 let s = match session_manager
-                        .lock().expect("Failed to lock mutex")
-                        .load_from_skey(&skey, &session_db_path)? {
-                            None => return Err(ApplicationError::ValueNotFound("Session not found".to_string())),
-                            Some(s) => s,
-                        };
+                    .lock()
+                    .expect("Failed to lock mutex")
+                    .load_from_skey(&skey, &session_db_path)?
+                {
+                    None => {
+                        return Err(ApplicationError::ValueNotFound(
+                            "Session not found".to_string(),
+                        ))
+                    }
+                    Some(s) => s,
+                };
                 Some(s)
             }
             None => None,
@@ -274,14 +294,22 @@ fn get_request_data(
         // its path in bytes
         let session = match sn {
             Some(s) => s,
-            None => return Err(ApplicationError::ValueNotFound("No session passed while getting request data.".to_string())),
+            None => {
+                return Err(ApplicationError::ValueNotFound(
+                    "No session passed while getting request data.".to_string(),
+                ))
+            }
         };
         let colpath = format!("{}.tmp", session.get_col_path().display());
         let colp = Path::new(&colpath);
 
         let d = match data {
             Some(d) => d,
-            None => return Err(ApplicationError::ValueNotFound("No data passed to get_request_data function".to_string())),
+            None => {
+                return Err(ApplicationError::ValueNotFound(
+                    "No data passed to get_request_data function".to_string(),
+                ))
+            }
         };
         fs::write(colp, d)?;
         Ok(Some(colpath.as_bytes().to_owned()))
@@ -294,22 +322,39 @@ fn get_request_data(
 }
 /// open col and add col to backend
 // TODO if argument is not optional the handling must happen at higher level no use at handling option unwraping inside functions
-fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backend>>) -> Result<(), ApplicationError>{
+fn add_col(
+    mtd: Option<Method>,
+    sn: Option<Session>,
+    bd: &web::Data<Mutex<Backend>>,
+) -> Result<(), ApplicationError> {
     if mtd == Some(Method::Meta) {
         let s = match sn {
             Some(s) => s,
-            None => return Err(ApplicationError::ValueNotFound("No session passed while adding column.".to_string())),
+            None => {
+                return Err(ApplicationError::ValueNotFound(
+                    "No session passed while adding column.".to_string(),
+                ))
+            }
         };
-        if bd.lock().expect("Failed to lock mutex").col.lock().expect("Failed to lock mutex").is_none() {
+        if bd
+            .lock()
+            .expect("Failed to lock mutex")
+            .col
+            .lock()
+            .expect("Failed to lock mutex")
+            .is_none()
+        {
             bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
         } else {
             // reopen col(switch col_path)
             let sname = s.clone().name;
             // TODO fix this horrible thing
             if *bd
-                .lock().expect("Failed to lock mutex")
+                .lock()
+                .expect("Failed to lock mutex")
                 .col
-                .lock().expect("Failed to lock mutex")
+                .lock()
+                .expect("Failed to lock mutex")
                 .as_ref()
                 .unwrap()
                 .col_path
@@ -321,9 +366,17 @@ fn add_col(mtd: Option<Method>, sn: Option<Session>, bd: &web::Data<Mutex<Backen
                 .unwrap()
                 != sname
             {
-                let old = bd.lock().expect("Failed to lock mutex").col.lock().unwrap().take().unwrap();
+                let old = bd
+                    .lock()
+                    .expect("Failed to lock mutex")
+                    .col
+                    .lock()
+                    .unwrap()
+                    .take()
+                    .unwrap();
                 drop(old);
-                bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
+                bd.lock().expect("Failed to lock mutex").col =
+                    Arc::new(Mutex::new(Some(s.get_col()?)));
             }
         }
     }
@@ -373,12 +426,13 @@ pub async fn sync_app_no_fail(
     req: HttpRequest,
     web::Path((root, name)): web::Path<(String, String)>,
 ) -> Result<HttpResponse> {
-
     match sync_app(session_manager, bd, payload, req, web::Path((root, name))).await {
         Ok(v) => Ok(v),
-        Err(e) => { eprintln!("Sync error: {}", e); Ok(HttpResponse::InternalServerError().finish())}
+        Err(e) => {
+            eprintln!("Sync error: {}", e);
+            Ok(HttpResponse::InternalServerError().finish())
+        }
     }
-
 }
 
 pub async fn sync_app(
@@ -393,13 +447,21 @@ pub async fn sync_app(
     if method == "GET" {
         let path_and_query = match req.uri().path_and_query() {
             // TODO precise error type, valuenotfound is becoming a catch all
-            None => return Err(ApplicationError::ValueNotFound("Could not get path and query from HTTP request".to_string())),
+            None => {
+                return Err(ApplicationError::ValueNotFound(
+                    "Could not get path and query from HTTP request".to_string(),
+                ))
+            }
             Some(s) => s,
         };
         let qs = urlparse(path_and_query.as_str());
         let query = match qs.get_parsed_query() {
             Some(q) => q,
-            None => return Err(ApplicationError::ValueNotFound("Empty query in HTTP request".to_string())),
+            None => {
+                return Err(ApplicationError::ValueNotFound(
+                    "Empty query in HTTP request".to_string(),
+                ))
+            }
         };
         for (k, v) in query {
             map.insert(k, v.join("").as_bytes().to_vec());
@@ -437,7 +499,11 @@ pub async fn sync_app(
             // session None is forbidden
             let session = match sn.clone() {
                 Some(s) => s,
-                None => return Err(ApplicationError::ValueNotFound("No session passed for media sync".to_string())),
+                None => {
+                    return Err(ApplicationError::ValueNotFound(
+                        "No session passed for media sync".to_string(),
+                    ))
+                }
             };
             let (md, mf) = session.get_md_mf();
 
@@ -455,10 +521,11 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) = match adopt_media_changes_from_zip(&mm, data.unwrap()).await {
-                        Ok(v) => v,
-                        Err(e) => return Err(e),
-                    };
+                    let (procs_cnt, lastusn) =
+                        match adopt_media_changes_from_zip(&mm, data.unwrap()).await {
+                            Ok(v) => v,
+                            Err(e) => return Err(e),
+                        };
 
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {

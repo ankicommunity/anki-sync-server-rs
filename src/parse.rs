@@ -5,6 +5,53 @@ pub mod conf {
     use serde::Deserialize;
     use std::fs;
     use std::path::Path;
+    static CONF_TEXT: &str = r#"
+    [address]
+    host="0.0.0.0"
+    port = "27701"
+    # use current executable path ,only set filename
+    [paths]
+    # set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
+    root_dir="."
+    #following three lines are unnessesary and can be skipped
+     data_root = ""
+     auth_db_path = ""
+     session_db_path = ""
+            
+    # user will be added 
+    #into auth.db if not empty,and two fields must not be empty
+    [account]
+    username=""
+    password=""
+    "#;
+    static CONF_TEXT_SSL: &str = r#"
+    [address]
+    host="0.0.0.0"
+    port = "27701"
+    # use current executable path ,only set filename
+    [paths]
+    # set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
+    root_dir="."
+    #following three lines are unnessesary and can be skipped
+     data_root = ""
+     auth_db_path = ""
+     session_db_path = ""
+            
+    # user will be added 
+    #into auth.db if not empty,and two fields must not be empty
+    [account]
+    username=""
+    password=""
+    
+    # Only in a situation running cargo build command with flag --feature rustls
+    # can this take effect.
+    # embeded encrypted http connection if in LAN
+    # true to enable ssl or false
+    [localcert]
+    ssl_enable=false
+    cert_file=""
+    key_file=""
+    "#;
     #[derive(Debug, Deserialize)]
     pub struct Address {
         pub host: String,
@@ -22,6 +69,7 @@ pub mod conf {
         pub username: String,
         pub password: String,
     }
+    #[cfg(feature = "rustls")]
     #[derive(Debug, Deserialize)]
     pub struct LocalCert {
         pub ssl_enable: bool,
@@ -33,6 +81,7 @@ pub mod conf {
         pub address: Address,
         pub paths: Paths,
         pub account: Account,
+        #[cfg(feature = "rustls")]
         pub localcert: LocalCert,
     }
     impl Settings {
@@ -62,32 +111,11 @@ pub mod conf {
     }
     /// create configure file and write contents to it
     pub fn create_conf(p: &Path) {
-        let content = r#"
-[address]
-host="0.0.0.0"
-port = "27701"
-# use current executable path ,only set filename
-[paths]
-# set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
-root_dir="."
-#following three lines are unnessesary and can be skipped
- data_root = ""
- auth_db_path = ""
- session_db_path = ""
-        
-# user will be added 
-#into auth.db if not empty,and two fields must not be empty
-[account]
-username=""
-password=""
-        
-# embeded encrypted http /https credential if in Intranet
-# true to enable ssl or false
-[localcert]
-ssl_enable=false
-cert_file=""
-key_file=""
-"#;
+        let content = if cfg!(feature = "rustls") {
+            CONF_TEXT_SSL
+        } else {
+            CONF_TEXT
+        };
         if !p.exists() {
             if let Err(_e) = fs::write(p, content) {
                 panic!("Cannot write config file at '{}'", p.display());
