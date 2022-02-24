@@ -216,7 +216,7 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
 pub fn authenticate<P: AsRef<Path>>(
     hkreq: &HostKeyRequest,
     auth_db_path: P,
-) -> std::result::Result<bool, UserError> {
+) -> Result<bool, UserError> {
     let auth_db = auth_db_path.as_ref();
 
     let conn = Connection::open(auth_db)?;
