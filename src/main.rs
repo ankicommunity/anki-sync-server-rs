@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
-mod error;
 mod db;
+mod error;
 mod media;
 pub mod parse;
 pub mod session;
@@ -48,7 +48,7 @@ fn load_ssl(localcert: LocalCert) -> Option<ServerConfig> {
     }
 }
 #[actix_web::main]
-async fn main() -> Result<(),()> {
+async fn main() -> Result<(), ()> {
     //cli argument  parse
     let matches = parse();
     // set config path if parsed and write conf settings
@@ -63,7 +63,6 @@ async fn main() -> Result<(),()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
     // enter into account manage if subcommand exists,else run server
     if matches.subcommand_name().is_some() {
-
         if let Err(e) = user_manage(matches, auth_path) {
             eprintln!("Error managing users: {}", e);
             return Err(());
@@ -95,9 +94,15 @@ async fn main() -> Result<(),()> {
                 .wrap(middleware::Logger::default())
         });
         let result = if let Some(c) = ssl_config {
-            s.bind_rustls(addr, c).expect("Failed to bind with rustls.").run().await
+            s.bind_rustls(addr, c)
+                .expect("Failed to bind with rustls.")
+                .run()
+                .await
         } else {
-            s.bind(addr).expect("Failed to bind, please check config.").run().await
+            s.bind(addr)
+                .expect("Failed to bind, please check config.")
+                .run()
+                .await
         };
         if let Err(e) = result {
             eprintln!("Bind error: {}", e);
