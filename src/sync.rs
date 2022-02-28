@@ -114,10 +114,9 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
     let mut map = HashMap::new();
     // iterate over multipart stream
     while let Some(mut field) = payload.try_next().await? {
-        let content_disposition = field
-            .content_disposition()
-            .ok_or_else(|| HttpResponse::BadRequest().finish())?;
-        // TODO do no unwrap propoagate error upward (return server error 5xx?)
+        let content_disposition = field.content_disposition();
+        // Safe to unwrap as parsing is ok, see
+        // https://actix.rs/actix-web/actix_multipart/struct.Field.html#method.content_disposition
         let k = content_disposition.get_name().unwrap().to_owned();
 
         // Field in turn is stream of *Bytes* object
@@ -424,9 +423,9 @@ pub async fn sync_app_no_fail(
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
-    web::Path((root, name)): web::Path<(String, String)>,
+    path: web::Path<(String, String)>, //(root,name)
 ) -> Result<HttpResponse> {
-    match sync_app(session_manager, bd, payload, req, web::Path((root, name))).await {
+    match sync_app(session_manager, bd, payload, req, path).await {
         Ok(v) => Ok(v),
         Err(e) => {
             eprintln!("Sync error: {}", e);
@@ -440,8 +439,9 @@ pub async fn sync_app(
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
-    web::Path((_, name)): web::Path<(String, String)>,
+    path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ApplicationError> {
+    let (_, name) = path.into_inner();
     let method = req.method().as_str();
     let mut map = HashMap::new();
     if method == "GET" {

@@ -12,10 +12,13 @@ repository = "https://github.com/ankicommunity/anki-sync-server-rs.git"
 
 build = "build.rs"
 
+[features]
+tls = ["rustls", "rustls-pemfile"]
+
 [dependencies]
 thiserror = "1.0.30"
-actix-web = { version = "3", features=["rustls"]}
-actix-multipart = "0.3"
+actix-web = { version = "4", features=["rustls"]}
+actix-multipart = "0.4"
 async-std = "1.8"
 futures-util = "0.3"
 bytes="0.5.6"
@@ -38,4 +41,8 @@ features = ["bundled"]
 
 [dependencies.rustls]
 optional = true
-version = "0.18"
+version = "0.20"
+
+[dependencies.rustls-pemfile]
+optional = true
+version = "0.3.0"

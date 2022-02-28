@@ -18,3 +18,7 @@ Steps:
 3. Checkout a branch for your contribution `git checkout -b my-new-feature`
 4. Push your new feature
 5. Open an MR at [ankicommunity/anki-sync-server-rs](https://github.com/ankicommunity/anki-sync-server-rs)
+
+## During development
+
+Use  `scripts/build_all` to check if building works with each feature.
