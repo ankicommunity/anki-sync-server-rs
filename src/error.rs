@@ -24,4 +24,6 @@ pub enum ApplicationError {
     ValueNotFound(String),
     #[error("Unknown data user error")]
     Unknown,
+    #[error(transparent)]
+    UserError(#[from] crate::user::UserError),
 }
