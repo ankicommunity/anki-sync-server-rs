@@ -29,7 +29,15 @@ rustflags = ["-C", "target-feature=+crt-static",
  "-C", "link-args=-static",
  ]
 
-#for cmd line use
+# for some regions where github are blocked or badly connected
+#[source.crates-io]
+#registry="https://github.com/rust-lang/crates.io-index" # 这行可以不要,只是说明原始地址
+#replace-with='tuna'
+#[source.tuna]
+#registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+
+
+#for linux cmd line use
 #[net]
 #retry = 2 # 失败 自动重试 次数
 #git-fetch-with-cli = true
