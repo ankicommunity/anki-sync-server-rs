@@ -2,6 +2,8 @@
 
 [![](https://img.shields.io/github/v/release/ankicommunity/anki-sync-server-rs)](https://github.com/ankicommunity/anki-sync-server-rs/releases/latest)[![](https://img.shields.io/github/last-commit/ankicommunity/anki-sync-server-rs)]()
 
+A cross-platform,easy to deploy,binary-providing Anki sync server.
+
 This is a rust (still sqlite c library backed) take on anki sync server (for a mature python one see [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server)).
 
 
@@ -14,7 +16,7 @@ This is a rust (still sqlite c library backed) take on anki sync server (for a m
 5. Configure your client to sync with the custom server, see [here](docs/ANKI_CLIENTS_SETUP.md)
 
 For https setup and support see [certificate setup](docs/CERTS.md).
-See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy in front of the syn server.
+See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy in front of the sync server.
 
 
 ### Quickstart guide
@@ -65,7 +67,7 @@ Win 10 64bits
 
 |machine|ENV|
 |----|----|
-|x86_64|Windows wsl2(need testing )|
+|x86_64|Windows wsl2,tested|
 |aarch64(arm64)|cross-compiled on wsl2(ubuntu),tested on ubuntu aarch64 and termux|
 |armv7(arm32)|cross-compiled on wsl2(ubuntu)|
 

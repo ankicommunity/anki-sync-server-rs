@@ -17,7 +17,7 @@ podman build -t anki-sync-server-rs/builder:latest .
 ```
 2. Then exfiltrate the binary from the container:
 ```
-`podman run --rm --entrypoint cat anki-sync-server-rs/builder:latest /usr/local/bin/ankisyncd > ankisyncd
+podman run --rm --entrypoint cat anki-sync-server-rs/builder:latest /usr/local/bin/ankisyncd > ankisyncd
 ```
 3. Use the `ankisyncd` binary obtained as usual
 
