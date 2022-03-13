@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(unused_imports)]
 mod db;
 mod error;
 mod media;
@@ -24,7 +23,9 @@ use parse::{
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 #[cfg(feature = "rustls")]
 use rustls::{NoClientAuth, ServerConfig};
+#[cfg(feature = "rustls")]
 use std::fs::File;
+#[cfg(feature = "rustls")]
 use std::io::BufReader;
 use std::path::Path;
 use std::sync::Mutex;
