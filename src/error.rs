@@ -22,3 +22,9 @@ pub enum ApplicationError {
     #[error("Unknown data user error")]
     Unknown,
 }
+
+
+#[test]
+fn test_cicd() {
+    println!("ci cd testing")
+}
