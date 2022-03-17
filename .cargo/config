@@ -1,9 +1,9 @@
 #this file is for cross-compiling's use
 
 #MacOS
-[target.x86_64-apple-darwin]
-linker = "x86_64-apple-darwin14-clang"
-ar = "x86_64-apple-darwin14-ar"
+# [target.x86_64-apple-darwin]
+# linker = "x86_64-apple-darwin14-clang"
+# ar = "x86_64-apple-darwin14-ar"
 #Windows
 [target.x86_64-pc-windows-msvc]
 # statically link the C runtime (CRT)
