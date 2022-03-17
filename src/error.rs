@@ -23,8 +23,12 @@ pub enum ApplicationError {
     Unknown,
 }
 
-
 #[test]
 fn test_cicd() {
     println!("ci cd testing")
+}
+
+#[test]
+fn test_cicd2() {
+    println!("ci cd2 testing")
 }
