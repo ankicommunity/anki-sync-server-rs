@@ -60,12 +60,13 @@ fn load_ssl(localcert: LocalCert) -> Result<Option<ServerConfig>, error::Applica
         Ok(None)
     }
 }
-async fn server_builder(addr: String) -> Result<(), ()> {
+async fn server_builder(addr: String) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
     env_logger::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let tr = I18n::template_only();
-    let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
+    let logger = anki::log::default_logger(None).expect("Failed to build logger");
+    let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
     HttpServer::new(move || {
         App::new()
             .app_data(session_manager.clone())
@@ -80,14 +81,14 @@ async fn server_builder(addr: String) -> Result<(), ()> {
     .run()
     .await
     .expect("server build error");
-    Ok(())
 }
 #[cfg(feature = "tls")]
-async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) -> Result<(), ()> {
+async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
     env_logger::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let tr = I18n::template_only();
+    let logger = anki::log::default_logger(None).expect("Failed to build logger");
     let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
     HttpServer::new(move || {
         App::new()
@@ -103,7 +104,6 @@ async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) -> Re
     .run()
     .await
     .expect("server build error");
-    Ok(())
 }
 #[actix_web::main]
 async fn main() -> Result<(), ()> {
@@ -160,7 +160,7 @@ async fn main() -> Result<(), ()> {
             }
             return Ok(());
         }
-        server_builder(addr).await?;
+        server_builder(addr).await;
         Ok(())
     }
 }

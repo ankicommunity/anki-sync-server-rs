@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+ANKI_REPO_URL=https://github.com/ankitects/anki
+ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
+
+PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
+ANKI_PATCH_FOLDER="$PROJECT_ROOT/anki_patch/"
+ANKI_FILE_SUFFIX="_anki_rslib.patch"
+
+echo "Cloning anki from $ANKI_REPO_URL"
+cd "$PROJECT_ROOT"
+git clone "$ANKI_REPO_URL"
+echo "Checking out commit $ANKI_COMMIT and applying patch"
+cd anki
+git checkout $ANKI_COMMIT
+git apply "$ANKI_PATCH_FOLDER/$ANKI_COMMIT$ANKI_FILE_SUFFIX"

@@ -8,10 +8,10 @@ See Quickstart in [README.md](../README.md).
 
 1. make sure Rust and its toolchains are installed.
 In doubt use rustup as proposed in [this link](https://www.rust-lang.org/tools/install).
-2. clone our repo and enter into the folder, run build command
-`cargo build --release`
-3. The resulting binary is available in `target/release/`
-
+2. clone our repo and enter into the folder
+3. Populate anki lib by running `scripts/clone_patch_anki`
+4. run build command `cargo build --release`
+5. The resulting binary is available in `target/release/`
 
 ## Install as a systemd unit
 

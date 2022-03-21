@@ -1,5 +1,0 @@
-#!/bin/bash
-
-set -e
-
-BUILDARGS="--config opt" $(dirname $0)/../run $*

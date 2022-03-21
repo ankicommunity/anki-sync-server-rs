@@ -2,6 +2,7 @@ FROM rust:latest as builder
 WORKDIR /usr/src/anki-sync-server-rs
 # copy from host to container
 COPY . .
+RUN scripts/clone_patch_anki
 RUN cargo build --release  
 
 FROM debian:stable-slim as runner
