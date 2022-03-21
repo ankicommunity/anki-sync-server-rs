@@ -388,22 +388,30 @@ fn add_col(
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
     mtd: Option<Method>,
-    bd: &web::Data<Mutex<Backend>>,
+    bd: web::Data<Mutex<Backend>>,
     data: &[u8],
     session_manager: web::Data<Mutex<SessionManager>>,
     paths: Paths,
 ) -> Result<Vec<u8>, ApplicationError> {
     // TODO fix that we cannot take anything other than the if as we arre unwraping to create
     // outdata
-    let outdata = bd
-        .lock()
-        .expect("Failed to lock mutex")
-        .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
-            method: mtd.unwrap().into(),
-            data: data.to_vec(),
-        })
-        .map_err(|_| ApplicationError::AnkiError)?
-        .json;
+    let data_vec = data.to_vec();
+    let outdata_result: Result<Vec<u8>, ()> = actix_web::web::block(move || {
+        Ok(bd
+            .clone()
+            .lock()
+            .expect("Failed to lock mutex")
+            .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
+                method: mtd.unwrap().into(),
+                data: data_vec,
+            })
+            .map_err(|_| ())?
+            .json)
+    })
+    .await
+    .expect("Failed to spawn thread for blocking task");
+    let outdata = outdata_result.map_err(|_| ApplicationError::AnkiError)?;
+
     if mtd == Some(Method::HostKey) {
         let x = serde_json::from_slice(data)?;
         let resp = operation_hostkey(session_manager, x, paths).await?;
@@ -501,7 +509,7 @@ pub async fn sync_app(
 
             // response data
             if let Some(dt) = data {
-                let outdata = get_resp_data(mtd, &bd, &dt, session_manager, paths).await?;
+                let outdata = get_resp_data(mtd, bd.clone(), &dt, session_manager, paths).await?;
                 Ok(HttpResponse::Ok().body(outdata))
             } else {
                 Err(ApplicationError::ValueNotFound("Data is empty".to_string()))
