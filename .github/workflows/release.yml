@@ -6,15 +6,93 @@ on:
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
+  arm:
+    name: Build Arm
+    runs-on: ubuntu-latest
+    # after every step is finished,export to PATH will be clear,so in next step ,need re-export
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+# this may not succeed?
+      - name: Add cargo taget armv7
+        run: rustup target add armv7-unknown-linux-musleabihf
+
+      - name: Download arm-musl-gcc
+        run: wget  -P $HOME https://musl.cc/arm-linux-musleabihf-cross.tgz
+
+      - name: unpack arm-musl-gcc
+        run: tar -zxvf $HOME/arm-linux-musleabihf-cross.tgz -C $HOME
+      # used to compile openssl
+      - name: Download arm-gnueabihf-gcc 
+        run: |
+          git clone --depth 1 https://github.com/raspberrypi/tools.git $HOME/rpitools
+          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
+          arm-linux-gnueabihf-gcc -v
+
+      - name: Download and unpack lib openssl
+        run: | 
+          wget --no-check-certificate https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz
+          tar -zxvf openssl-1.1.1f.tar.gz -C .
+          ls .
+      
+      - name: Compile openssl
+        run: | 
+          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
+          arm-linux-gnueabihf-gcc -v
+
+          export MACHINE=armv7
+          export ARCH=arm
+          export CC=arm-linux-gnueabihf-gcc
+          cc -v
+
+          mkdir -p $HOME/openssl
+          cd openssl-1.1.1f
+          ./config shared --prefix=$HOME/openssl && make 
+          make install
+          cd ..
+          ls $HOME/openssl/include
+# build staticly linked binary for armv7 or aarch64
+      - name: Build 
+        run: | 
+          ls $HOME/openssl/lib
+          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
+          export CC=arm-linux-gnueabihf-gcc
+          
+          export OPENSSL_LIB_DIR=$HOME/openssl/lib
+          export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
+          export OPENSSL_STATIC=true
+
+          export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
+          
+          cargo build --target armv7-unknown-linux-musleabihf --release
+  
+       - name: Create output directory
+        run: mkdir output
+
+      - name: Copy files to output
+        run: |
+          cp target/armv7-unknown-linux-musleabihf/release/ankisyncd output/
+         
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: arm
+          path: output/*
+
   linux:
     name: Build Linux
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-
-      - name: Install libxcb
-        run: sudo apt-get install libxcb-composite0-dev
 
       - name: Set up cargo
         uses: actions-rs/toolchain@v1
@@ -27,28 +105,109 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          # args: --release --all --features=extra
+          args: --release --features rustls
+
+      # - name: Strip binaries (nu)
+      #   run: strip target/release/
+
       - name: Create output directory
         run: mkdir output
 
       - name: Copy files to output
         run: |
-          cp target/release/nu ankisyncd output/
-      
+          cp target/release/ankisyncd output/
+         
+
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: linux
           path: output/*
 
+  macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
 
-release:
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release 
+
+      # - name: Strip binaries (nu)
+      #   run: strip target/release/nu
+
+      - name: Create output directory
+        run: mkdir output
+
+      - name: Copy files to output
+        run: |
+          cp target/release/ankisyncd output/
+         
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos
+          path: output/*
+
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          # args: --release --features rustls
+          args: --release 
+
+      # - name: Strip binaries (nu.exe)
+      #   run: strip target/release/nu.exe
+
+
+      - name: Create output directory
+        run: mkdir output
+
+      - name: Copy files to output
+        run: |
+          cp target\release\ankisyncd.exe output\
+         
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-zip
+          path: output\*
+
+  release:
     name: Publish Release
     runs-on: ubuntu-latest
     needs:
       - linux
       - macos
       - windows
+      - arm
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -64,10 +223,11 @@ release:
           MINOR=${MINOR#*.}
           PATCH=${VERSION##*.}
           echo "::set-output name=version::${VERSION}"
-          echo "::set-output name=linuxdir::nu_${MAJOR}_${MINOR}_${PATCH}_linux"
-          echo "::set-output name=macosdir::nu_${MAJOR}_${MINOR}_${PATCH}_macOS"
-          echo "::set-output name=windowsdir::nu_${MAJOR}_${MINOR}_${PATCH}_windows"
-          echo "::set-output name=innerdir::nushell-${VERSION}"
+          echo "::set-output name=linuxdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_linux"
+          echo "::set-output name=macosdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_macOS"
+          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_windows"
+          echo "::set-output name=armdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_arm"
+          echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
         id: create_release
         uses: actions/create-release@v1
@@ -77,20 +237,46 @@ release:
           tag_name: ${{ github.ref }}
           release_name: ${{ steps.info.outputs.version }} Release
           draft: true
+      
+      - name: Create arm Directory
+        run: mkdir -p ${{ steps.info.outputs.armdir }}
+
+      - name: Download arm Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: arm
+          path: ${{ steps.info.outputs.armdir }}
+
+      - name: Restore arm File Modes
+        run: |
+          chmod 755 ${{ steps.info.outputs.armdir }}/ankisyncd*
+
+      - name: Create arm tarball
+        run: tar -zcvf ${{ steps.info.outputs.armdir }}.tar.gz ${{ steps.info.outputs.armdir }}
+
+      - name: Upload arm Artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.info.outputs.armdir }}.tar.gz
+          asset_name: ${{ steps.info.outputs.armdir }}.tar.gz
+          asset_content_type: application/gzip
 
       - name: Create Linux Directory
-        run: mkdir -p ${{ steps.info.outputs.linuxdir }}/${{ steps.info.outputs.innerdir }}
+        run: mkdir -p ${{ steps.info.outputs.linuxdir }}
 
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v2
         with:
           name: linux
-          path: ${{ steps.info.outputs.linuxdir }}/${{ steps.info.outputs.innerdir }}
+          path: ${{ steps.info.outputs.linuxdir }}
 
       - name: Restore Linux File Modes
         run: |
-          chmod 755 ${{ steps.info.outputs.linuxdir }}/${{ steps.info.outputs.innerdir }}/nu*
-          chmod 755 ${{ steps.info.outputs.linuxdir }}/${{ steps.info.outputs.innerdir }}/libssl*
+          chmod 755 ${{ steps.info.outputs.linuxdir }}/ankisyncd*
+
       - name: Create Linux tarball
         run: tar -zcvf ${{ steps.info.outputs.linuxdir }}.tar.gz ${{ steps.info.outputs.linuxdir }}
 
@@ -105,16 +291,16 @@ release:
           asset_content_type: application/gzip
 
       - name: Create macOS Directory
-        run: mkdir -p ${{ steps.info.outputs.macosdir }}/${{ steps.info.outputs.innerdir }}
+        run: mkdir -p ${{ steps.info.outputs.macosdir }}
 
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v2
         with:
           name: macos
-          path: ${{ steps.info.outputs.macosdir }}/${{ steps.info.outputs.innerdir }}
+          path: ${{ steps.info.outputs.macosdir }}
 
       - name: Restore macOS File Modes
-        run: chmod 755 ${{ steps.info.outputs.macosdir }}/${{ steps.info.outputs.innerdir }}/nu*
+        run: chmod 755 ${{ steps.info.outputs.macosdir }}/ankisyncd*
 
       - name: Create macOS Archive
         run: zip -r ${{ steps.info.outputs.macosdir }}.zip ${{ steps.info.outputs.macosdir }}
@@ -130,18 +316,18 @@ release:
           asset_content_type: application/zip
 
       - name: Create Windows Directory
-        run: mkdir -p ${{ steps.info.outputs.windowsdir }}/${{ steps.info.outputs.innerdir }}
+        run: mkdir -p ${{ steps.info.outputs.windowsdir }}
 
       - name: Download Windows zip
         uses: actions/download-artifact@v2
         with:
           name: windows-zip
-          path: ${{ steps.info.outputs.windowsdir }}/${{ steps.info.outputs.innerdir }}
+          path: ${{ steps.info.outputs.windowsdir }}
 
       - name: Show Windows Artifacts
-        run: ls -la ${{ steps.info.outputs.windowsdir }}/${{ steps.info.outputs.innerdir }}
+        run: ls -la ${{ steps.info.outputs.windowsdir }}
 
-      - name: Create macOS Archive
+      - name: Create Windows Archive
         run: zip -r ${{ steps.info.outputs.windowsdir }}.zip ${{ steps.info.outputs.windowsdir }}
 
       - name: Upload Windows zip
@@ -153,19 +339,3 @@ release:
           asset_path: ./${{ steps.info.outputs.windowsdir }}.zip
           asset_name: ${{ steps.info.outputs.windowsdir }}.zip
           asset_content_type: application/zip
-
-      - name: Download Windows installer
-        uses: actions/download-artifact@v2
-        with:
-          name: windows-installer
-          path: ./
-
-      - name: Upload Windows installer
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./nushell-windows.msi
-          asset_name: ${{ steps.info.outputs.windowsdir }}.msi
-          asset_content_type: application/x-msi
