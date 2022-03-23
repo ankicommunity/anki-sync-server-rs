@@ -32,3 +32,8 @@ fn test_cicd() {
 fn test_cicd2() {
     println!("ci cd2 testing")
 }
+
+#[test]
+fn test_cicd3() {
+    println!("ci cd2 testing")
+}
