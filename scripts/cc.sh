@@ -28,7 +28,7 @@ else
 export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
 export CC=arm-linux-gnueabihf-gcc
 # add env var
-export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
+# export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
 # use compiled openssl
 export OPENSSL_LIB_DIR=/home/ubuntu/openssl-armv7/lib
 export OPENSSL_INCLUDE_DIR=/home/ubuntu/openssl-armv7/include
@@ -44,19 +44,19 @@ mv ankisyncd-$version-linux-arm.tar.gz ~
 fi
 
 #for x86-64
-echo "cross-compile for x64"
-# add env var
-export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
-export CC=
+# echo "cross-compile for x64"
+# # add env var
+# export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
+# export CC=
 
-export OPENSSL_LIB_DIR=/home/ubuntu/openssl_x64
-export OPENSSL_INCLUDE_DIR=/home/ubuntu/openssl_x64/include
-export OPENSSL_STATIC=true
-#  enable feature --features rustls
-cargo build --release --target=x86_64-unknown-linux-musl
+# export OPENSSL_LIB_DIR=/home/ubuntu/openssl_x64
+# export OPENSSL_INCLUDE_DIR=/home/ubuntu/openssl_x64/include
+# export OPENSSL_STATIC=true
+# #  enable feature --features rustls
+# cargo build --release --target=x86_64-unknown-linux-musl
 
-mkdir ankisyncd-linux
-cp target/x86_64-unknown-linux-musl/release/ankisyncd ankisyncd-linux/
-cp Settings.toml ankisyncd-linux/
-tar -czvf ankisyncd-$version-linux.tar.gz ankisyncd-linux/
-mv ankisyncd-$version-linux.tar.gz ~
+# mkdir ankisyncd-linux
+# cp target/x86_64-unknown-linux-musl/release/ankisyncd ankisyncd-linux/
+# cp Settings.toml ankisyncd-linux/
+# tar -czvf ankisyncd-$version-linux.tar.gz ankisyncd-linux/
+# mv ankisyncd-$version-linux.tar.gz ~
