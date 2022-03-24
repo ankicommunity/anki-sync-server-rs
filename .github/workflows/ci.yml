@@ -48,7 +48,7 @@ jobs:
           ls anki
       
       # set up and run pre-commit
-      - name: Clone patch Anki
+      - name: Run pre-commit
         run: |
           pip -V
           pip install pre-commit
