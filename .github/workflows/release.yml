@@ -80,7 +80,7 @@ jobs:
           
           cargo build --target armv7-unknown-linux-musleabihf --release --features rustls
   
-       - name: Create output directory
+      - name: Create output directory
         run: mkdir output
 
       - name: Copy files to output
