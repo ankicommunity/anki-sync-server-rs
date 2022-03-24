@@ -78,7 +78,7 @@ jobs:
 
           export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
           
-          cargo build --target armv7-unknown-linux-musleabihf --release
+          cargo build --target armv7-unknown-linux-musleabihf --release --features tls
   
        - name: Create output directory
         run: mkdir output
@@ -118,7 +118,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --features rustls
+          args: --release --features tls
 
       # - name: Strip binaries (nu)
       #   run: strip target/release/
@@ -161,7 +161,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release 
+          args: --release --features tls 
 
       # - name: Strip binaries (nu)
       #   run: strip target/release/nu
@@ -204,8 +204,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          # args: --release --features rustls
-          args: --release 
+          args: --release --features tls
 
       # - name: Strip binaries (nu.exe)
       #   run: strip target/release/nu.exe
