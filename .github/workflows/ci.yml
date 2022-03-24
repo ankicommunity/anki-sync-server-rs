@@ -46,6 +46,14 @@ jobs:
         run: |
           sh ./scripts/clone_patch_anki
           ls anki
+      
+      # set up and run pre-commit
+      - name: Clone patch Anki
+        run: |
+          pip -V
+          pip install pre-commit
+          pre-commit --version
+          pre-commit run --all-files
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1
