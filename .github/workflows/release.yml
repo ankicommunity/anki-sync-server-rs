@@ -6,8 +6,8 @@ on:
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
-  arm:
-    name: Build Arm
+  armv7:
+    name: Build Armv7
     runs-on: ubuntu-latest
     # after every step is finished,export to PATH will be clear,so in next step ,need re-export
     steps:
@@ -91,7 +91,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: arm
+          name: armv7
           path: output/*
 
   linux:
@@ -218,10 +218,10 @@ jobs:
           cp target\release\ankisyncd.exe output\
          
 
-      - name: Upload zip
+      - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: windows-zip
+          name: windows
           path: output\*
 
   release:
@@ -231,7 +231,7 @@ jobs:
       - linux
       - macos
       - windows
-      - arm
+      - armv7
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -247,10 +247,10 @@ jobs:
           MINOR=${MINOR#*.}
           PATCH=${VERSION##*.}
           echo "::set-output name=version::${VERSION}"
-          echo "::set-output name=linuxdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_linux"
-          echo "::set-output name=macosdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_macOS"
-          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_windows"
-          echo "::set-output name=armdir::ankisyncd_${MAJOR}_${MINOR}_${PATCH}_arm"
+          echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x86_64_glibc"
+          echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x86_64"
+          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows"
+          echo "::set-output name=armv7dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_armv7_muslc"
           echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
         id: create_release
@@ -262,30 +262,30 @@ jobs:
           release_name: ${{ steps.info.outputs.version }} Release
           draft: true
       
-      - name: Create arm Directory
-        run: mkdir -p ${{ steps.info.outputs.armdir }}
+      - name: Create armv7 Directory
+        run: mkdir -p ${{ steps.info.outputs.armv7dir }}
 
-      - name: Download arm Artifacts
+      - name: Download armv7 Artifacts
         uses: actions/download-artifact@v2
         with:
-          name: arm
-          path: ${{ steps.info.outputs.armdir }}
+          name: armv7
+          path: ${{ steps.info.outputs.armv7dir }}
 
-      - name: Restore arm File Modes
+      - name: Restore armv7 File Modes
         run: |
-          chmod 755 ${{ steps.info.outputs.armdir }}/ankisyncd*
+          chmod 755 ${{ steps.info.outputs.armv7dir }}/ankisyncd*
 
-      - name: Create arm tarball
-        run: tar -zcvf ${{ steps.info.outputs.armdir }}.tar.gz ${{ steps.info.outputs.armdir }}
+      - name: Create armv7 tarball
+        run: tar -zcvf ${{ steps.info.outputs.armv7dir }}.tar.gz ${{ steps.info.outputs.armv7dir }}
 
-      - name: Upload arm Artifact
+      - name: Upload armv7 Artifact
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.info.outputs.armdir }}.tar.gz
-          asset_name: ${{ steps.info.outputs.armdir }}.tar.gz
+          asset_path: ./${{ steps.info.outputs.armv7dir }}.tar.gz
+          asset_name: ${{ steps.info.outputs.armv7dir }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Create Linux Directory
@@ -342,24 +342,24 @@ jobs:
       - name: Create Windows Directory
         run: mkdir -p ${{ steps.info.outputs.windowsdir }}
 
-      - name: Download Windows zip
+      - name: Download Windows artifact
         uses: actions/download-artifact@v2
         with:
-          name: windows-zip
+          name: windows
           path: ${{ steps.info.outputs.windowsdir }}
 
       - name: Show Windows Artifacts
         run: ls -la ${{ steps.info.outputs.windowsdir }}
 
-      - name: Create Windows Archive
-        run: zip -r ${{ steps.info.outputs.windowsdir }}.zip ${{ steps.info.outputs.windowsdir }}
+      # - name: Create Windows Archive
+      #   run: zip -r ${{ steps.info.outputs.windowsdir }}.zip ${{ steps.info.outputs.windowsdir }}
 
-      - name: Upload Windows zip
+      - name: Upload Windows binary
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.info.outputs.windowsdir }}.zip
-          asset_name: ${{ steps.info.outputs.windowsdir }}.zip
-          asset_content_type: application/zip
+          asset_path: ./${{ steps.info.outputs.windowsdir }}/ankisyncd.exe
+          asset_name: ankisyncd.exe
+          asset_content_type: application/x-executable
