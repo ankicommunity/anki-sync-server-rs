@@ -41,12 +41,6 @@ jobs:
           override: true
           components: rustfmt, clippy
           
-            # clone and patch anki library  
-      - name: Clone patch Anki
-        run: |
-          sh ./scripts/clone_patch_anki
-          ls anki
-      
       # set up and run pre-commit
       - name: Run pre-commit
         run: |
@@ -54,6 +48,12 @@ jobs:
           pip install pre-commit
           pre-commit --version
           pre-commit run --all-files
+
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1
