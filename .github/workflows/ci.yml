@@ -40,6 +40,12 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
           components: rustfmt, clippy
+          
+            # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1

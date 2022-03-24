@@ -20,7 +20,14 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-# this may not succeed?
+
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
+
+      # this may not succeed?
       - name: Add cargo taget armv7
         run: rustup target add armv7-unknown-linux-musleabihf
 
@@ -100,6 +107,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -137,6 +150,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -175,6 +194,12 @@ jobs:
           toolchain: stable
           override: true
 
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          ls anki
+          
       - name: Build
         uses: actions-rs/cargo@v1
         with:
