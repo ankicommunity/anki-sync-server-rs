@@ -5,8 +5,8 @@
 @echo off
 @REM define variable
 set ANKI_REPO_URL="https://github.com/ankitects/anki"
-@REM set ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
-set ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
+set ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
+@REM set ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
 @REM here e.g. D:\software\vscode_project\anki_sync\anki-sync-server-rs
 set PROJECT_ROOT= %CD%
 set ANKI_PATCH_FOLDER=%PROJECT_ROOT%\anki_patch
