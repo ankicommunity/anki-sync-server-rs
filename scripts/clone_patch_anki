@@ -2,8 +2,8 @@
 set -eu
 
 ANKI_REPO_URL=https://github.com/ankitects/anki
-ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
-
+# ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
+ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
 PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
 ANKI_PATCH_FOLDER="$PROJECT_ROOT/anki_patch/"
 ANKI_FILE_SUFFIX="_anki_rslib.patch"

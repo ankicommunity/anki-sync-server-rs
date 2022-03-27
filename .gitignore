@@ -3,7 +3,7 @@
 # Ignore prototyping dir
 /tmp
 # Ignore anki repo clone
-/anki/target/
+/anki
 # Ignore test db and files when running in dev folder
 Settings.toml
 auth.db
@@ -27,7 +27,6 @@ Sessionx.vim
 .netrwhist
 *~
 # Auto-generated tag files
-# this will prevent anki/rslib/src/tags from being uploaded if uncomment
-# tags
+tags
 # Persistent undo
 [._]*.un~

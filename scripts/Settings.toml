@@ -1,4 +1,4 @@
-# for cross-compiling utility
+# for cross-compiling utility or github  action to draft release 
 [address]
 host="0.0.0.0"
 port = "27701"
