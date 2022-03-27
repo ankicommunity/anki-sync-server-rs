@@ -1,0 +1,3 @@
+#!/bin/sh
+cargo build $1
+cargo build --features tls $1

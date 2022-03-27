@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS search_nids;
-CREATE TEMPORARY TABLE search_nids (nid integer PRIMARY KEY NOT NULL);

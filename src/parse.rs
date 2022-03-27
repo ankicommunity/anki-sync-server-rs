@@ -1,4 +1,4 @@
-use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgMatches};
+use clap::{crate_description, crate_name, crate_version, Arg, ArgMatches, Command};
 
 pub mod conf {
     use config::{Config, ConfigError, File};
@@ -125,7 +125,7 @@ pub mod conf {
 }
 /// construct a argument parser
 pub fn parse() -> ArgMatches {
-    App::new(crate_name!())
+    Command::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
         .arg(
@@ -133,20 +133,20 @@ pub fn parse() -> ArgMatches {
                 .short('c')
                 .long("config")
                 .value_name("FILE")
-                .about("Sets a custom config file,ie -c ankisyncd.toml")
+                .help("Sets a custom config file,ie -c ankisyncd.toml")
                 .default_value("Settings.toml")
                 .takes_value(true),
         )
         .subcommand(
-            App::new("user")
+            Command::new("user")
                 .short_flag('U')
                 .about("user management,interact with db CRUD actions")
-                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg_required_else_help(true)
                 .arg(
                     Arg::new("add")
                         .long("add")
                         .short('a')
-                        .about("create user account, i.e.-a user password")
+                        .help("create user account, i.e.-a user password")
                         .value_names(&["username", "password"])
                         .takes_value(true)
                         .multiple_values(true)
@@ -156,7 +156,7 @@ pub fn parse() -> ArgMatches {
                     Arg::new("del")
                         .long("del")
                         .short('d')
-                        .about("delete users,allow for multi-users, i.e.-d  user1 user2")
+                        .help("delete users,allow for multi-users, i.e.-d  user1 user2")
                         .value_name("username")
                         .takes_value(true)
                         .multiple_values(true)
@@ -166,7 +166,7 @@ pub fn parse() -> ArgMatches {
                     Arg::new("pass")
                         .long("pass")
                         .short('p')
-                        .about("change user's password, i.e.-p user newpassword")
+                        .help("change user's password, i.e.-p user newpassword")
                         .value_names(&["username", "newpassword"])
                         .takes_value(true)
                         .multiple_values(true)
@@ -174,7 +174,7 @@ pub fn parse() -> ArgMatches {
                 )
                 .arg(
                     Arg::new("list")
-                        .about("list all usernames extracted from db ,i.e. -l")
+                        .help("list all usernames extracted from db ,i.e. -l")
                         .long("list")
                         .short('l'),
                 ),

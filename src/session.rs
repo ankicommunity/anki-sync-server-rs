@@ -1,7 +1,6 @@
 use crate::error::ApplicationError;
-use anki::collection::{open_collection, Collection};
+use anki::collection::{Collection, CollectionBuilder};
 use anki::i18n::I18n;
-use anki::log;
 use rand::{self, Rng};
 use rusqlite::Row;
 use rusqlite::{Connection, OptionalExtension, Result};
@@ -40,7 +39,12 @@ impl Session {
         let col_path = user_path.join("collection.anki2");
         let medir = user_path.join("collection.media");
         let medb = user_path.join("collection.media.server.db");
-        let c = match open_collection(col_path, medir, medb, true, tr, log::terminal()) {
+        let col_result = CollectionBuilder::new(col_path)
+            .set_media_paths(medir, medb)
+            .set_server(true)
+            .set_tr(tr)
+            .build();
+        let c = match col_result {
             Ok(c) => c,
             Err(_) => return Err(ApplicationError::AnkiError),
         };

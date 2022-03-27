@@ -10,8 +10,13 @@ use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
-        slog::{self, o},
-        zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
+        //slog::{self, o},
+        zip,
+        BufWriter,
+        FinalizeRequest,
+        FinalizeResponse,
+        RecordBatchRequest,
+        SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
@@ -74,13 +79,12 @@ async fn operation_hostkey(
 ) -> Result<Option<HostKeyResponse>, ApplicationError> {
     let auth_db_path = paths.auth_db_path;
     let session_db_path = paths.session_db_path;
-    let auth_success = match authenticate(&hkreq, auth_db_path) {
-        Ok(v) => v,
-        Err(e) => panic!("Could not authenticate: {}", e),
-    };
+    let auth_success = authenticate(&hkreq, auth_db_path)?;
+
     if !auth_success {
         return Ok(None);
     }
+
     let hkey = gen_hostkey(&hkreq.username);
 
     let dir = paths.data_root;
@@ -94,9 +98,9 @@ async fn operation_hostkey(
     let hkres = HostKeyResponse { key: hkey };
     Ok(Some(hkres))
 }
-fn _decode(data: &[u8], compression: Option<&Vec<u8>>) -> Result<Vec<u8>> {
+fn _decode(data: &[u8], compression: Option<&Vec<u8>>) -> Result<Vec<u8>, ApplicationError> {
     let d = if let Some(x) = compression {
-        let c = String::from_utf8(x.to_vec()).expect("Failed to convert data to utf8");
+        let c = String::from_utf8(x.to_vec())?;
         if c == "1" {
             let mut d = GzDecoder::new(data);
             let mut b = vec![];
@@ -114,10 +118,9 @@ async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>
     let mut map = HashMap::new();
     // iterate over multipart stream
     while let Some(mut field) = payload.try_next().await? {
-        let content_disposition = field
-            .content_disposition()
-            .ok_or_else(|| HttpResponse::BadRequest().finish())?;
-        // TODO do no unwrap propoagate error upward (return server error 5xx?)
+        let content_disposition = field.content_disposition();
+        // Safe to unwrap as parsing is ok, see
+        // https://actix.rs/actix-web/actix_multipart/struct.Field.html#method.content_disposition
         let k = content_disposition.get_name().unwrap().to_owned();
 
         // Field in turn is stream of *Bytes* object
@@ -150,7 +153,7 @@ async fn adopt_media_changes_from_zip(
     zip_data: Vec<u8>,
 ) -> Result<(usize, i32), ApplicationError> {
     let media_dir = &mm.media_folder;
-    let _root = slog::Logger::root(slog::Discard, o!());
+    //let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
     let mut zip = zip::ZipArchive::new(reader)?;
     let mut meta_file = zip
@@ -180,7 +183,7 @@ async fn adopt_media_changes_from_zip(
     }
 
     drop(meta_file);
-    let mut usn = mm.last_usn();
+    let mut usn = mm.last_usn()?;
     fs::create_dir_all(&media_dir)?;
     for i in 0..zip.len() {
         let mut file = zip.by_index(i)?;
@@ -203,19 +206,19 @@ async fn adopt_media_changes_from_zip(
         file.read_to_end(&mut data)?;
         //    write zip data to media folder
         usn += 1;
-        let add = mm.add_file(real_name, &data, usn).await;
+        let add = mm.add_file(real_name, &data, usn).await?;
 
         media_to_add.push(add);
     }
     let processed_count = media_to_add.len() + media_to_remove.len();
-    let lastusn = mm.last_usn();
+    let lastusn = mm.last_usn()?;
     // db ops add/delete
 
     if !media_to_remove.is_empty() {
-        mm.delete(media_to_remove.as_slice());
+        mm.delete(media_to_remove.as_slice())?;
     }
     if !media_to_add.is_empty() {
-        mm.records_add(media_to_add);
+        mm.records_add(media_to_add)?;
     }
     Ok((processed_count, lastusn))
 }
@@ -385,26 +388,39 @@ fn add_col(
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
     mtd: Option<Method>,
-    bd: &web::Data<Mutex<Backend>>,
-    data: Option<Vec<u8>>,
+    bd: web::Data<Mutex<Backend>>,
+    data: &[u8],
     session_manager: web::Data<Mutex<SessionManager>>,
     paths: Paths,
-) -> Vec<u8> {
-    let outdata = bd
-        .lock()
-        .unwrap()
-        .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
-            method: mtd.unwrap().into(),
-            data: data.clone().unwrap(),
-        })
-        .unwrap()
-        .json;
+) -> Result<Vec<u8>, ApplicationError> {
+    // TODO fix that we cannot take anything other than the if as we arre unwraping to create
+    // outdata
+    let data_vec = data.to_vec();
+    let outdata_result: Result<Vec<u8>, ()> = actix_web::web::block(move || {
+        Ok(bd
+            .clone()
+            .lock()
+            .expect("Failed to lock mutex")
+            .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
+                method: mtd.unwrap().into(),
+                data: data_vec,
+            })
+            .map_err(|_| ())?
+            .json)
+    })
+    .await
+    .expect("Failed to spawn thread for blocking task");
+    let outdata = outdata_result.map_err(|_| ApplicationError::AnkiError)?;
+
     if mtd == Some(Method::HostKey) {
-        let x = serde_json::from_slice(&data.clone().unwrap()).unwrap();
-        let resp = operation_hostkey(session_manager, x, paths).await.unwrap();
-        serde_json::to_vec(&resp.unwrap()).unwrap()
+        let x = serde_json::from_slice(data)?;
+        let resp = operation_hostkey(session_manager, x, paths).await?;
+        match resp {
+            Some(s) => Ok(serde_json::to_vec(&s)?),
+            None => Err(ApplicationError::Unknown), // TODO better error handling
+        }
     } else if mtd == Some(Method::FullUpload) {
-        b"OK".to_vec()
+        Ok(b"OK".to_vec())
     } else if mtd == Some(Method::FullDownload) {
         let file = String::from_utf8(outdata).unwrap();
         let mut file_buffer = vec![];
@@ -412,9 +428,9 @@ async fn get_resp_data(
             .unwrap()
             .read_to_end(&mut file_buffer)
             .unwrap();
-        file_buffer
+        Ok(file_buffer)
     } else {
-        outdata
+        Ok(outdata)
     }
 }
 
@@ -424,9 +440,9 @@ pub async fn sync_app_no_fail(
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
-    web::Path((root, name)): web::Path<(String, String)>,
+    path: web::Path<(String, String)>, //(root,name)
 ) -> Result<HttpResponse> {
-    match sync_app(session_manager, bd, payload, req, web::Path((root, name))).await {
+    match sync_app(session_manager, bd, payload, req, path).await {
         Ok(v) => Ok(v),
         Err(e) => {
             eprintln!("Sync error: {}", e);
@@ -440,8 +456,9 @@ pub async fn sync_app(
     bd: web::Data<Mutex<Backend>>,
     payload: Multipart,
     req: HttpRequest,
-    web::Path((_, name)): web::Path<(String, String)>,
+    path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ApplicationError> {
+    let (_, name) = path.into_inner();
     let method = req.method().as_str();
     let mut map = HashMap::new();
     if method == "GET" {
@@ -491,8 +508,12 @@ pub async fn sync_app(
             add_col(mtd, sn.clone(), &bd)?;
 
             // response data
-            let outdata = get_resp_data(mtd, &bd, data, session_manager, paths).await;
-            Ok(HttpResponse::Ok().body(outdata))
+            if let Some(dt) = data {
+                let outdata = get_resp_data(mtd, bd.clone(), &dt, session_manager, paths).await?;
+                Ok(HttpResponse::Ok().body(outdata))
+            } else {
+                Err(ApplicationError::ValueNotFound("Data is empty".to_string()))
+            }
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
@@ -510,7 +531,7 @@ pub async fn sync_app(
             let mm = MediaManager::new(mf, md)?;
             match media_op {
                 "begin" => {
-                    let lastusn = mm.last_usn();
+                    let lastusn = mm.last_usn()?;
                     let sbr = SyncBeginResult {
                         data: Some(SyncBeginResponse {
                             sync_key: session.skey(),
@@ -543,10 +564,10 @@ pub async fn sync_app(
                     // paste-d8d989d662ae46a420ec5d440516912c5fbf2111.jpg 132 d8d989d662ae46a420ec5d440516912c5fbf2111
                     let rbr: RecordBatchRequest = serde_json::from_slice(&data.unwrap()).unwrap();
                     let client_lastusn = rbr.last_usn;
-                    let server_lastusn = mm.last_usn();
+                    let server_lastusn = mm.last_usn()?;
 
                     let d = if client_lastusn < server_lastusn || client_lastusn == 0 {
-                        let mut chges = mm.changes(client_lastusn);
+                        let mut chges = mm.changes(client_lastusn)?;
                         chges.reverse();
                         MediaRecordResult {
                             data: Some(chges),
@@ -575,7 +596,7 @@ pub async fn sync_app(
                 "mediaSanity" => {
                     let locol: FinalizeRequest =
                         serde_json::from_slice(&data.clone().unwrap()).unwrap();
-                    let res = if mm.count() == locol.local {
+                    let res = if mm.count()? == locol.local {
                         "OK"
                     } else {
                         "FAILED"
