@@ -19,7 +19,7 @@ def recurive_remove_files(root_dir):
 # get project dir root of anki-sync-server-rs
 # first remove folder .git manially
 
-dir_list=["sass","ts","python","pylib","qt","tools"]
+dir_list=[".cargo","sass","ts","python","pylib","qt","tools"]
 anki_dir=Path(os.getcwd()).joinpath("anki")
 
 for i in dir_list:
