@@ -4,8 +4,8 @@ use rusqlite::{params, Connection, Result};
 use crate::db::{fetchone, open_media_db};
 #[allow(unused_imports)]
 use anki::media::{
-    files::{add_data_to_folder_uniquely, data_for_file, hex, normalize_filename, sha1_of_data},
-    sync::{unicode_normalization, zip},
+    files::{add_data_to_folder_uniquely, data_for_file, normalize_filename, sha1_of_data},
+    sync::{hex, unicode_normalization, zip},
 };
 use serde_derive::{Deserialize, Serialize};
 use std::{

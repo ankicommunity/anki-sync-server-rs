@@ -3,7 +3,7 @@
 # Ignore prototyping dir
 /tmp
 # Ignore anki repo clone
-/anki/
+/anki/target/
 # Ignore test db and files when running in dev folder
 Settings.toml
 auth.db

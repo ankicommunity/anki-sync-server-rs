@@ -1,0 +1,10 @@
+__pycache__
+.DS_Store
+anki.prof
+target
+/user.bazelrc
+.dmypy.json
+node_modules
+/.idea/
+/.bazel
+/windows.bazelrc
