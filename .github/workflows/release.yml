@@ -9,7 +9,7 @@ jobs:
   armv7:
     name: Build Armv7
     runs-on: ubuntu-latest
-    # after every step is finished,export to PATH will be clear,so in next step ,need re-export
+    # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -65,7 +65,7 @@ jobs:
           make install
           cd ..
           ls $HOME/openssl/include
-# build staticly linked binary for armv7 or aarch64
+      # build static-linked binary for armv7 (also suitable for aarch64)
       - name: Build 
         run: | 
           ls $HOME/openssl/lib
@@ -86,6 +86,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/armv7-unknown-linux-musleabihf/release/ankisyncd output/
+          cp scripts/Settings.toml output/
          
 
       - name: Upload artifact
@@ -172,6 +173,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/release/ankisyncd output/
+          cp scripts/Settings.toml output/
          
 
       - name: Upload artifact
@@ -197,7 +199,7 @@ jobs:
       # clone and patch anki library  
       - name: Clone patch Anki
         run: |
-          sh ./scripts/clone_patch_anki
+          .\scripts\clone_patch_anki.bat
           ls anki
           
       - name: Build
@@ -216,6 +218,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target\release\ankisyncd.exe output\
+          cp scripts\Settings.toml output\
          
 
       - name: Upload artifact
@@ -249,7 +252,7 @@ jobs:
           echo "::set-output name=version::${VERSION}"
           echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x86_64_glibc"
           echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x86_64"
-          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows"
+          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows_x86_64"
           echo "::set-output name=armv7dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_armv7_muslc"
           echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
@@ -351,8 +354,8 @@ jobs:
       - name: Show Windows Artifacts
         run: ls -la ${{ steps.info.outputs.windowsdir }}
 
-      # - name: Create Windows Archive
-      #   run: zip -r ${{ steps.info.outputs.windowsdir }}.zip ${{ steps.info.outputs.windowsdir }}
+      - name: Create Windows Archive
+        run: zip -r ${{ steps.info.outputs.windowsdir }}.zip ${{ steps.info.outputs.windowsdir }}
 
       - name: Upload Windows binary
         uses: actions/upload-release-asset@v1
@@ -360,6 +363,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.info.outputs.windowsdir }}/ankisyncd.exe
-          asset_name: ankisyncd.exe
-          asset_content_type: application/x-executable
+          asset_path: ./${{ steps.info.outputs.windowsdir }}.zip
+          asset_name: ${{ steps.info.outputs.windowsdir }}.zip
+          asset_content_type: application/zip
