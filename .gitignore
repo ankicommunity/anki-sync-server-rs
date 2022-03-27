@@ -27,6 +27,7 @@ Sessionx.vim
 .netrwhist
 *~
 # Auto-generated tag files
-tags
+# this will prevent anki/rslib/src/tags from being uploaded if uncomment
+# tags
 # Persistent undo
 [._]*.un~
