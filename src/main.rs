@@ -89,7 +89,7 @@ async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) {
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let tr = I18n::template_only();
     let logger = anki::log::default_logger(None).expect("Failed to build logger");
-    let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
+    let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
     HttpServer::new(move || {
         App::new()
             .app_data(session_manager.clone())
