@@ -42,9 +42,6 @@ jobs:
         uses: actions/setup-python@v2
 
       # clone and patch anki library  
-      # - name: Clone patch Anki
-      #   run: |
-      #     sh ./scripts/clone_patch_anki
       - name: Clone patch Anki
         run: |
           python ./scripts/clone_patch_anki.py
