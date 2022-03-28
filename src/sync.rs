@@ -10,12 +10,7 @@ use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
-        zip,
-        BufWriter,
-        FinalizeRequest,
-        FinalizeResponse,
-        RecordBatchRequest,
-        SyncBeginResponse,
+        zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
