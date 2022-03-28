@@ -200,7 +200,6 @@ jobs:
       - name: Clone patch Anki
         run: |
           .\scripts\clone_patch_anki.bat
-          ls anki
           
       - name: Build
         uses: actions-rs/cargo@v1

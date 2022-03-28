@@ -12,6 +12,18 @@ jobs:
         rust:
           - stable
         
+        include:
+          - style: all
+            flags: '--all-features'
+          - style: default
+            flags: ''
+          - style: minimal
+            flags: '--no-default-features'
+        exclude:
+          - platform: ubuntu-latest
+            style: default
+          - platform: macos-latest
+            style: minimal
 
     runs-on: ${{ matrix.platform }}
 
@@ -26,20 +38,18 @@ jobs:
           override: true
           components: rustfmt, clippy
           
-      # set up and run pre-commit
-      - name: Run pre-commit
-        run: |
-          pip -V
-          pip install pre-commit
-          pre-commit --version
-          pre-commit run --all-files
-
-      # clone and patch anki library  
+       # clone and patch anki library  
       - name: Clone patch Anki
         run: |
           sh ./scripts/clone_patch_anki
           ls anki
-
+          
+      # set up and run pre-commit pre-commit run --all-files
+      - name: Set up python
+        uses: actions/setup-python@v2
+      - name: run pre-commit
+        uses: pre-commit/action@v2.0.3
+     
       - name: Build Ankisyncd
         uses: actions-rs/cargo@v1
         with:
@@ -64,18 +74,14 @@ jobs:
       # clone and patch anki library  
       - name: Clone patch Anki
         run: |
-          ./scripts/clone_patch_anki.bat
-          ls anki
-
-       # set up and run pre-commit
-      - name: Run pre-commit
-        run: |
-          pip -V
-          pip install pre-commit
-          pre-commit --version
-          pre-commit run --all-files
-
+          .\scripts\clone_patch_anki.bat
       
+      # set up and run pre-commit pre-commit run --all-files
+      - name: Set up python
+        uses: actions/setup-python@v2
+      - name: run pre-commit
+        uses: pre-commit/action@v2.0.3
+
       # run build script to build
       - name: Build Ankisyncd
         run: |
