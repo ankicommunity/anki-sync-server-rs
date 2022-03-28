@@ -10,7 +10,7 @@ set ANKI_REPO_URL="https://github.com/ankitects/anki"
 
 @REM Set up other variables
 set ANKI_TAG=2.1.46
-set ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
+set ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
 
 @REM Clone & patch
 echo "Cloning anki from %ANKI_REPO_URL%"

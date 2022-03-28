@@ -1,3 +1,16 @@
+From 480a572137a51316bab2d97f2435cdfe328c462c Mon Sep 17 00:00:00 2001
+From: dobefore <1432338032@qq.com>
+Date: Sun, 27 Mar 2022 11:09:31 +0800
+Subject: [PATCH] create patch
+
+---
+ rslib/src/backend/mod.rs    |  2 +-
+ rslib/src/collection/mod.rs |  2 +-
+ rslib/src/lib.rs            |  4 ++--
+ rslib/src/media/files.rs    |  6 +++---
+ rslib/src/media/sync.rs     | 40 ++++++++++++++++++++-----------------
+ 5 files changed, 29 insertions(+), 25 deletions(-)
+
 diff --git a/rslib/src/backend/mod.rs b/rslib/src/backend/mod.rs
 index b4ec28cfa..4261a1d5f 100644
 --- a/rslib/src/backend/mod.rs
@@ -46,33 +59,11 @@ index 9e03edc38..586ecb7a2 100644
  pub mod tags;
  pub mod template;
  pub mod template_filters;
-diff --git a/rslib/src/log.rs b/rslib/src/log.rs
-index b9ad49e65..30ecf512b 100644
---- a/rslib/src/log.rs
-+++ b/rslib/src/log.rs
-@@ -9,7 +9,7 @@ use slog_async::OverflowStrategy;
- 
- const LOG_ROTATE_BYTES: u64 = 50 * 1024 * 1024;
- 
--pub(crate) fn terminal() -> Logger {
-+pub fn terminal() -> Logger {
-     let decorator = slog_term::TermDecorator::new().build();
-     let drain = slog_term::FullFormat::new(decorator).build().fuse();
-     let drain = slog_envlogger::new(drain);
 diff --git a/rslib/src/media/files.rs b/rslib/src/media/files.rs
-index b56b1baa3..668b2ba9e 100644
+index b56b1baa3..6921c1318 100644
 --- a/rslib/src/media/files.rs
 +++ b/rslib/src/media/files.rs
-@@ -20,6 +20,8 @@ use crate::{
-     log::{debug, Logger},
- };
- 
-+pub use hex;
-+
- /// The maximum length we allow a filename to be. When combined
- /// with the rest of the path, the full path needs to be under ~240 chars
- /// on some platforms, and some filesystems like eCryptFS will increase
-@@ -87,7 +89,7 @@ fn nonbreaking_space(char: char) -> bool {
+@@ -87,7 +87,7 @@ fn nonbreaking_space(char: char) -> bool {
  /// - Any problem characters are removed.
  /// - Windows device names like CON and PRN have '_' appended
  /// - The filename is limited to 120 bytes.
@@ -81,7 +72,7 @@ index b56b1baa3..668b2ba9e 100644
      let mut output = Cow::Borrowed(fname);
  
      if !is_nfc(output.as_ref()) {
-@@ -302,7 +304,7 @@ pub(crate) fn sha1_of_file(path: &Path) -> io::Result<[u8; 20]> {
+@@ -302,7 +302,7 @@ pub(crate) fn sha1_of_file(path: &Path) -> io::Result<[u8; 20]> {
  }
  
  /// Return the SHA1 of provided data.
@@ -90,7 +81,7 @@ index b56b1baa3..668b2ba9e 100644
      let mut hasher = Sha1::new();
      hasher.update(data);
      hasher.digest().bytes()
-@@ -415,7 +417,7 @@ pub(super) fn add_file_from_ankiweb(
+@@ -415,7 +415,7 @@ pub(super) fn add_file_from_ankiweb(
      })
  }
  
@@ -100,20 +91,19 @@ index b56b1baa3..668b2ba9e 100644
          Ok(file) => file,
          Err(e) => {
 diff --git a/rslib/src/media/sync.rs b/rslib/src/media/sync.rs
-index da50eda88..257ea40b0 100644
+index da50eda88..14664bbe9 100644
 --- a/rslib/src/media/sync.rs
 +++ b/rslib/src/media/sync.rs
-@@ -32,6 +32,10 @@ use crate::{
-     version,
- };
- 
+@@ -1,5 +1,9 @@
+ // Copyright: Ankitects Pty Ltd and contributors
+ // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 +pub use unicode_normalization;
 +pub use zip;
 +pub use tokio::io::BufWriter;
-+
- static SYNC_MAX_FILES: usize = 25;
- static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
- static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
++pub use hex;
+ 
+ use std::{
+     borrow::Cow,
 @@ -59,17 +63,17 @@ where
      log: Logger,
  }
@@ -122,7 +112,7 @@ index da50eda88..257ea40b0 100644
 -struct SyncBeginResult {
 -    data: Option<SyncBeginResponse>,
 -    err: String,
-+#[derive(Debug, Serialize, Deserialize)]
++#[derive(Debug,Serialize, Deserialize)]
 +pub struct SyncBeginResult {
 +    pub data: Option<SyncBeginResponse>,
 +    pub err: String,
@@ -130,7 +120,7 @@ index da50eda88..257ea40b0 100644
  
 -#[derive(Debug, Deserialize)]
 -struct SyncBeginResponse {
-+#[derive(Debug, Serialize, Deserialize)]
++#[derive(Debug,Serialize, Deserialize)]
 +pub struct SyncBeginResponse {
      #[serde(rename = "sk")]
 -    sync_key: String,
@@ -145,7 +135,7 @@ index da50eda88..257ea40b0 100644
  }
  
 -#[derive(Debug, Serialize)]
-+#[derive(Debug, Serialize, Deserialize)]
++#[derive(Debug, Serialize,Deserialize)]
  #[serde(rename_all = "camelCase")]
 -struct RecordBatchRequest {
 -    last_usn: i32,
@@ -161,7 +151,7 @@ index da50eda88..257ea40b0 100644
 -#[derive(Serialize)]
 -struct FinalizeRequest {
 -    local: u32,
-+#[derive(Serialize, Deserialize)]
++#[derive(Serialize,Deserialize)]
 +pub struct FinalizeRequest {
 +    pub local: u32,
  }
@@ -170,10 +160,13 @@ index da50eda88..257ea40b0 100644
 -struct FinalizeResponse {
 -    data: Option<String>,
 -    err: String,
-+#[derive(Debug, Serialize, Deserialize)]
++#[derive(Debug,Serialize, Deserialize)]
 +pub struct FinalizeResponse {
 +    pub data: Option<String>,
 +    pub err: String,
  }
  
  fn media_sync_endpoint(host_number: u32) -> String {
+-- 
+2.28.0.windows.1
+
