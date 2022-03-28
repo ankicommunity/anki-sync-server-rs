@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-
-ANKI_REPO_URL=https://github.com/ankitects/anki
+#R the file was created by @redmie
+ANKI_REPO_URL=${ANKI_REPO_URL:-"https://github.com/ankitects/anki"}
 ANKI_COMMIT=44342660d834e5a966c18f6984bac0369139e1bf
 
 PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
