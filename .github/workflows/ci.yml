@@ -54,6 +54,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
+          args: ${{ matrix.flags }}
 
   # it is necessary to separate windows ,as patch file differ  
   ci_windows:
