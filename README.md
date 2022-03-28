@@ -23,7 +23,7 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 
 #### Linux
 
-1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-arm.tar.gz` for armv7 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
+1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux_x86_64_xxx.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-armv7_muslc.tar.gz` for armv7 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
 2. Tweak the configuration `Settings.toml` to your liking
 3. Run server `./ankisyncd`
 4. Add user `./ankisyncd user --add username password` (use `./ankisyncd user --help` for more on user management)
@@ -31,10 +31,18 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 
 #### Windows
 
-1. Grab binray from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) (`ankisyncd.exe` for windows)
+1. Grab binray from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it,`ankisyncd_x.x.x-windows_x86_64.zip` for x86-64 windows.
 2. Tweak the configuration `Settings.toml` to your liking
 3. Run server (double click) `ankisyncd.exe`
 4. Add user using command line `./ankisyncd.exe user --add username password` (use `./ankisyncd.exe user --help` for more on user management)
+5. Enjoy!
+
+#### MacOS
+
+1. Grab binray from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it,`ankisyncd_x.x.x-macOS_x86_64.zip` for x86-64 MacOS.
+2. Tweak the configuration `Settings.toml` to your liking
+3. Run server (double click) `ankisyncd`
+4. Add user using command line `./ankisyncd user --add username password` (use `./ankisyncd.exe user --help` for more on user management)
 5. Enjoy!
 
 ### Containerized build
