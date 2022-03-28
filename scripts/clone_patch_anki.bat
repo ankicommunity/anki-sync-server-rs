@@ -24,6 +24,8 @@ git clone %ANKI_REPO_URL%
 echo "Checking out commit %ANKI_COMMIT% and applying patch"
 cd anki
 git checkout %ANKI_COMMIT%
+@REM convert CRLF TO LF
+dos2unix %ANKI_PATCH_FOLDER%\%ANKI_COMMIT%%ANKI_FILE_SUFFIX%
 git apply %ANKI_PATCH_FOLDER%\%ANKI_COMMIT%%ANKI_FILE_SUFFIX%
 
 
