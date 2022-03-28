@@ -13,7 +13,7 @@ use self::{
 };
 use actix_web::{middleware, web, App, HttpServer};
 use anki::{backend::Backend, i18n::I18n};
-#[cfg(feature = "rustls")]
+#[cfg(feature = "tls")]
 use parse::conf::LocalCert;
 use parse::{
     conf::{create_conf, Settings},
@@ -89,7 +89,7 @@ async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) {
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let tr = I18n::template_only();
     let logger = anki::log::default_logger(None).expect("Failed to build logger");
-    let bd = web::Data::new(Mutex::new(Backend::new(tr, true)));
+    let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
     HttpServer::new(move || {
         App::new()
             .app_data(session_manager.clone())
@@ -138,11 +138,11 @@ async fn main() -> Result<(), ()> {
             return Err(());
         }
         let addr = format!("{}:{}", conf.address.host, conf.address.port);
-        #[cfg(feature = "rustls")]
+        #[cfg(feature = "tls")]
         let lc = conf.localcert;
-        #[cfg(feature = "rustls")]
+        #[cfg(feature = "tls")]
         let enable = lc.ssl_enable;
-        #[cfg(feature = "rustls")]
+        #[cfg(feature = "tls")]
         let tls_conf = match load_ssl(lc) {
             Ok(c) => c,
             Err(e) => {
@@ -150,13 +150,13 @@ async fn main() -> Result<(), ()> {
                 return Err(());
             }
         };
-        if cfg!(feature = "rustls") {
-            #[cfg(feature = "rustls")]
+        if cfg!(feature = "tls") {
+            #[cfg(feature = "tls")]
             if enable {
-                #[cfg(feature = "rustls")]
-                server_builder_tls(addr, tls_conf.unwrap()).await?;
+                #[cfg(feature = "tls")]
+                server_builder_tls(addr, tls_conf.unwrap()).await;
             } else {
-                server_builder(addr.clone()).await?;
+                server_builder(addr.clone()).await;
             }
             return Ok(());
         }
