@@ -10,7 +10,6 @@ use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
-        //slog::{self, o},
         zip,
         BufWriter,
         FinalizeRequest,
@@ -153,7 +152,6 @@ async fn adopt_media_changes_from_zip(
     zip_data: Vec<u8>,
 ) -> Result<(usize, i32), ApplicationError> {
     let media_dir = &mm.media_folder;
-    //let _root = slog::Logger::root(slog::Discard, o!());
     let reader = io::Cursor::new(zip_data);
     let mut zip = zip::ZipArchive::new(reader)?;
     let mut meta_file = zip
