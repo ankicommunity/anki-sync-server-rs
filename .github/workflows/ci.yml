@@ -1,0 +1,94 @@
+on: [pull_request]
+
+name: Continuous integration
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-latest]
+        style: [all, default, minimal]
+        rust:
+          - stable
+        
+        include:
+          - style: all
+            flags: '--all-features'
+          - style: default
+            flags: ''
+          - style: minimal
+            flags: '--no-default-features'
+        exclude:
+          - platform: ubuntu-latest
+            style: default
+          - platform: macos-latest
+            style: minimal
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
+
+      - name: Set up python
+        uses: actions/setup-python@v2
+
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          python ./scripts/clone_patch_anki.py
+          
+      # set up and run pre-commit pre-commit run --all-files
+      - name: run pre-commit
+        uses: pre-commit/action@v2.0.3
+     
+      - name: Build Ankisyncd
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: ${{ matrix.flags }}
+
+  # it is necessary to separate windows ,as patch file differ  
+  ci_windows:
+    name: ci_on_windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: |
+          .\scripts\clone_patch_anki.bat
+      
+      # set up and run pre-commit pre-commit run --all-files
+      - name: Set up python
+        uses: actions/setup-python@v2
+      - name: run pre-commit
+        uses: pre-commit/action@v2.0.3
+
+      # run build script to build
+      - name: Build Ankisyncd
+        run: |
+          cargo build 
+          cargo build --features tls
+
+          
+
+
