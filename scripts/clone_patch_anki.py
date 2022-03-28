@@ -10,8 +10,8 @@ ANKI_COMMIT='5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a'
 # .../anki-sync-server-rs
 PROJECT_ROOT=Path(os.getcwd())
 ANKI_PATCH_FOLDER=PROJECT_ROOT.joinpath("anki_patch")
-ANKI_FILE_SUFFIX=ANKI_PATCH_FOLDER.joinpath( "_anki_rslib.patch")
-ANKI_PATCH_FILE_PATH=ANKI_PATCH_FOLDER.joinpath(ANKI_FILE_SUFFIX)
+ANKI_FILE_SUFFIX= "_anki_rslib.patch"
+ANKI_PATCH_FILE_PATH=ANKI_PATCH_FOLDER.joinpath(ANKI_COMMIT+ANKI_FILE_SUFFIX)
 
 print(f"Cloning anki from {ANKI_REPO_URL}")
 os.chdir(PROJECT_ROOT)
