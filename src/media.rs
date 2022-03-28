@@ -103,7 +103,7 @@ impl MediaManager {
             #[cfg(target_vendor = "apple")]
             {
                 use unicode_normalization::is_nfc;
-                if !is_nfc(&file) {
+                if !is_nfc(file) {
                     // older Anki versions stored non-normalized filenames in the DB; clean them up
                     invalid_entries.push(file.as_str());
                     continue;
