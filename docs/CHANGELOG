@@ -126,4 +126,6 @@ Contribution update :
 - Doc and qa:document re-writing #17 by @redmie
 - Docker build fails at prost-build for armv7h #22 ,#23. by @mktree and @dobefore
 - Unwrap reduction 2bis and versions bump:move anki out of source tree,fix run time in run time due to anki update by @redmie
-- Version-bump-update-anki-lib,fork from #18. document about #18 by @@redmie,@dobefore
+- Version-bump-update-anki-lib/better clone-patch-anki #29,fork from #18. document about #18, by @redmie,@dobefore
+- Cicd-system #26 by @dobefore and @redmie's suggestions
+- bump ankisyncd to 0.1.5 #30 by @dobefore
