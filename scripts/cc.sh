@@ -25,19 +25,34 @@ if [ -f $file2 ];then
  echo "$file2 exists"
 else
 # set CC locenv var
-export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
-export CC=arm-linux-gnueabihf-gcc
+# export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
+# export CC=arm-linux-gnueabihf-gcc
 # add env var
-# export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
+ export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
 # use compiled openssl
-export OPENSSL_LIB_DIR=/home/ubuntu/openssl-armv7/lib
-export OPENSSL_INCLUDE_DIR=/home/ubuntu/openssl-armv7/include
+export OPENSSL_LIB_DIR=/home/ubuntu/anki-sync-server-rs/openssl/lib
+export OPENSSL_INCLUDE_DIR=/home/ubuntu/anki-sync-server-rs/openssl/include
 export OPENSSL_STATIC=true
+
+mkdir -p $HOME/sql
+#  export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
+# export CC=arm-linux-musleabihf-gcc
+
+
+cd $HOME/sqlite-autoconf-3380200
+# make clean
+./configure CC=$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc  --host=arm-linux --prefix=$HOME/sql
+          make && make install
+
+
+cd $HOME/anki-sync-server-rs
+
+cp -r $HOME/sql .
 # cross build for armv7 enable feature --features rustls
- cargo build --target armv7-unknown-linux-musleabihf --release
+ cargo build --target arm-unknown-linux-musleabihf --release --features tls
 
 mkdir ankisyncd-arm
-cp target/armv7-unknown-linux-musleabihf/release/ankisyncd ankisyncd-arm/
+cp target/arm-unknown-linux-musleabihf/release/ankisyncd ankisyncd-arm/
 cp Settings.toml ankisyncd-arm/
 tar -czvf ankisyncd-$version-arm.tar.gz ankisyncd-arm/
 mv ankisyncd-$version-linux-arm.tar.gz ~

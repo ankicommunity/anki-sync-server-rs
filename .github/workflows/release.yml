@@ -6,8 +6,8 @@ on:
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
-  armv7:
-    name: Build Armv7
+  armv6:
+    name: Build armv6
     runs-on: ubuntu-latest
     # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
     steps:
@@ -28,8 +28,8 @@ jobs:
           ls anki
 
       # this may not succeed?
-      - name: Add cargo taget armv7
-        run: rustup target add armv7-unknown-linux-musleabihf
+      - name: Add cargo taget armv6
+        run: rustup target add arm-unknown-linux-musleabihf
 
       - name: Download arm-musl-gcc
         run: wget  -P $HOME https://musl.cc/arm-linux-musleabihf-cross.tgz
@@ -61,38 +61,49 @@ jobs:
 
           mkdir -p $HOME/openssl
           cd openssl-1.1.1f
-          ./config shared --prefix=$HOME/openssl && make 
+          ./config shared --prefix=$HOME/anki-sync-server-rs/openssl && make 
           make install
           cd ..
-          ls $HOME/openssl/include
-      # build static-linked binary for armv7 (also suitable for aarch64)
+          ls $HOME/anki-sync-server-rs/openssl/include
+
+      # compile sqlite
+      - name: Download and unpack lib sqlite3
+        run: |
+          wget --no-check-certificate https://www.sqlite.org/2022/sqlite-autoconf-3380200.tar.gz
+          tar -zxvf sqlite-autoconf-3380200.tar.gz -C .
+      - name: compile sqlite3
+        run: |
+          mkdir -p $HOME/sql
+          cd sqlite-autoconf-3380200
+          ./configure CC=$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc  --host=arm-linux --prefix=$HOME/sql
+          make && make install
+      
+      # build static-linked binary for armv6 (also suitable for aarch64)
       - name: Build 
         run: | 
-          ls $HOME/openssl/lib
-          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
-          export CC=arm-linux-gnueabihf-gcc
-          
-          export OPENSSL_LIB_DIR=$HOME/openssl/lib
-          export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
+          ls $HOME/anki-sync-server-rs/openssl/lib
+         
+          export OPENSSL_LIB_DIR=$HOME/anki-sync-server-rs/openssl/lib
+          export OPENSSL_INCLUDE_DIR=$HOME/anki-sync-server-rs/openssl/include
           export OPENSSL_STATIC=true
 
           export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
-          
-          cargo build --target armv7-unknown-linux-musleabihf --release --features tls
+          cp -r $HOME/sql .
+          cargo build --target arm-unknown-linux-musleabihf --release --features tls
   
       - name: Create output directory
         run: mkdir output
 
       - name: Copy files to output
         run: |
-          cp target/armv7-unknown-linux-musleabihf/release/ankisyncd output/
+          cp target/arm-unknown-linux-musleabihf/release/ankisyncd output/
           cp scripts/Settings.toml output/
          
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: armv7
+          name: armv6
           path: output/*
 
   linux:
@@ -236,7 +247,7 @@ jobs:
       - linux
       - macos
       - windows
-      - armv7
+      - armv6
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -255,7 +266,7 @@ jobs:
           echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x86_64_glibc"
           echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x86_64"
           echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows_x86_64"
-          echo "::set-output name=armv7dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_armv7_muslc"
+          echo "::set-output name=armv6dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_armv6_muslc"
           echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
         id: create_release
@@ -267,30 +278,30 @@ jobs:
           release_name: ${{ steps.info.outputs.version }} Release
           draft: true
       
-      - name: Create armv7 Directory
-        run: mkdir -p ${{ steps.info.outputs.armv7dir }}
+      - name: Create armv6 Directory
+        run: mkdir -p ${{ steps.info.outputs.armv6dir }}
 
-      - name: Download armv7 Artifacts
+      - name: Download armv6 Artifacts
         uses: actions/download-artifact@v2
         with:
-          name: armv7
-          path: ${{ steps.info.outputs.armv7dir }}
+          name: armv6
+          path: ${{ steps.info.outputs.armv6dir }}
 
-      - name: Restore armv7 File Modes
+      - name: Restore armv6 File Modes
         run: |
-          chmod 755 ${{ steps.info.outputs.armv7dir }}/ankisyncd*
+          chmod 755 ${{ steps.info.outputs.armv6dir }}/ankisyncd*
 
-      - name: Create armv7 tarball
-        run: tar -zcvf ${{ steps.info.outputs.armv7dir }}.tar.gz ${{ steps.info.outputs.armv7dir }}
+      - name: Create armv6 tarball
+        run: tar -zcvf ${{ steps.info.outputs.armv6dir }}.tar.gz ${{ steps.info.outputs.armv6dir }}
 
-      - name: Upload armv7 Artifact
+      - name: Upload armv6 Artifact
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.info.outputs.armv7dir }}.tar.gz
-          asset_name: ${{ steps.info.outputs.armv7dir }}.tar.gz
+          asset_path: ./${{ steps.info.outputs.armv6dir }}.tar.gz
+          asset_name: ${{ steps.info.outputs.armv6dir }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Create Linux Directory
