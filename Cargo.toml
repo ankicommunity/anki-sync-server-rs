@@ -55,6 +55,10 @@ rusqlite = {version = "0.26.2",features = ["bundled"]}
 [target.armv7-unknown-linux-gnueabihf.dependencies]
 rusqlite = {version = "0.26.2",features = ["bundled"]}
 
+# native build on host or docker
+[target.armv7h-unknown-linux-gnueabihf.dependencies]
+rusqlite = {version = "0.26.2",features = ["bundled"]}
+
 #use cross-compiled static sqlite3 library
 [target.arm-unknown-linux-musleabihf.dependencies]
 rusqlite = "0.26.2"
