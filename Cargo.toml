@@ -1,7 +1,7 @@
 [package]
 name = "ankisyncd"
 version = "0.1.5"
-edition = "2021"
+edition = "2018"
 license = "AGPL-3.0-or-later"
 documentation = "https://docs.rs/ankisyncd/"
 readme = "README.md"
