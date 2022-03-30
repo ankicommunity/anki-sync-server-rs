@@ -91,6 +91,9 @@ jobs:
           cp -r $HOME/sql .
           cargo build --target arm-unknown-linux-musleabihf --release --features tls
   
+      - name: Strip binaries (ankisyncd)
+        run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release
+      
       - name: Create output directory
         run: mkdir output
 
@@ -132,8 +135,8 @@ jobs:
           command: build
           args: --release --features tls
 
-      # - name: Strip binaries (nu)
-      #   run: strip target/release/
+      - name: Strip binaries (ankisyncd)
+        run: strip target/release/
 
       - name: Create output directory
         run: mkdir output
@@ -141,8 +144,8 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/release/ankisyncd output/
+          cp scripts/Settings.toml output/
          
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -178,8 +181,8 @@ jobs:
           command: build
           args: --release --features tls 
 
-      # - name: Strip binaries (nu)
-      #   run: strip target/release/nu
+      - name: Strip binaries (ankisyncd)
+        run: strip target/release/ankisyncd
 
       - name: Create output directory
         run: mkdir output
@@ -220,10 +223,6 @@ jobs:
         with:
           command: build
           args: --release --features tls
-
-      # - name: Strip binaries (nu.exe)
-      #   run: strip target/release/nu.exe
-
 
       - name: Create output directory
         run: mkdir output
