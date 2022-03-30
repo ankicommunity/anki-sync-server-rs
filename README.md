@@ -23,7 +23,7 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 
 #### Linux
 
-1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux_x86_64_xxx.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-armv7_muslc.tar.gz` for armv6 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
+1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux_x86_64_xxx.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-armv6_muslc.tar.gz` for armv6 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
 2. Tweak the configuration `Settings.toml` to your liking
 3. Run server `./ankisyncd`
 4. Add user `./ankisyncd user --add username password` (use `./ankisyncd user --help` for more on user management)
