@@ -130,4 +130,4 @@ Contribution update :
 - Cicd-system #26 by @dobefore and @redmie's suggestions
 - bump ankisyncd to 0.1.5(test release) #30 by @dobefore
 - fix cross compiling fail for arm(successfully build static bin) #32 by @dobefore
-- bump to 0.1.7 (formal release) 
+- bump to 0.1.7 (first formal release) #33 by @dobefore
