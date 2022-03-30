@@ -92,7 +92,7 @@ jobs:
           cargo build --target arm-unknown-linux-musleabihf --release --features tls
   
       - name: Strip binaries (ankisyncd)
-        run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release
+        run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release/ankisyncd
       
       - name: Create output directory
         run: mkdir output
@@ -136,7 +136,7 @@ jobs:
           args: --release --features tls
 
       - name: Strip binaries (ankisyncd)
-        run: strip target/release/
+        run: strip target/release/ankisyncd
 
       - name: Create output directory
         run: mkdir output
