@@ -144,8 +144,8 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/release/ankisyncd output/
+          cp scripts/Settings.toml output/
          
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
