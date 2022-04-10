@@ -1,6 +1,6 @@
 use crate::{
+    config::Config,
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
-    parse::conf::{Paths, Settings},
     session::SessionManager,
     user::authenticate,
 };
@@ -69,10 +69,10 @@ fn gen_hostkey(username: &str) -> String {
 async fn operation_hostkey(
     session_manager: web::Data<Mutex<SessionManager>>,
     hkreq: HostKeyRequest,
-    paths: Paths,
+    config: web::Data<Arc<Config>>,
 ) -> Result<Option<HostKeyResponse>, ApplicationError> {
-    let auth_db_path = paths.auth_db_path;
-    let session_db_path = paths.session_db_path;
+    let auth_db_path = config.auth_db_path();
+    let session_db_path = config.session_db_path();
     let auth_success = authenticate(&hkreq, auth_db_path)?;
 
     if !auth_success {
@@ -81,7 +81,7 @@ async fn operation_hostkey(
 
     let hkey = gen_hostkey(&hkreq.username);
 
-    let dir = paths.data_root;
+    let dir = config.data_root_path();
     let user_path = Path::new(&dir).join(&hkreq.username);
     let session = Session::new(&hkreq.username, user_path)?;
     session_manager
@@ -384,7 +384,7 @@ async fn get_resp_data(
     bd: web::Data<Mutex<Backend>>,
     data: &[u8],
     session_manager: web::Data<Mutex<SessionManager>>,
-    paths: Paths,
+    config: web::Data<Arc<Config>>,
 ) -> Result<Vec<u8>, ApplicationError> {
     // TODO fix that we cannot take anything other than the if as we arre unwraping to create
     // outdata
@@ -407,7 +407,7 @@ async fn get_resp_data(
 
     if mtd == Some(Method::HostKey) {
         let x = serde_json::from_slice(data)?;
-        let resp = operation_hostkey(session_manager, x, paths).await?;
+        let resp = operation_hostkey(session_manager, x, config).await?;
         match resp {
             Some(s) => Ok(serde_json::to_vec(&s)?),
             None => Err(ApplicationError::Unknown), // TODO better error handling
@@ -431,11 +431,12 @@ async fn get_resp_data(
 pub async fn sync_app_no_fail(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
+    config_data: web::Data<Arc<Config>>,
     payload: Multipart,
     req: HttpRequest,
     path: web::Path<(String, String)>, //(root,name)
 ) -> Result<HttpResponse> {
-    match sync_app(session_manager, bd, payload, req, path).await {
+    match sync_app(session_manager, bd, config_data, payload, req, path).await {
         Ok(v) => Ok(v),
         Err(e) => {
             eprintln!("Sync error: {}", e);
@@ -447,6 +448,7 @@ pub async fn sync_app_no_fail(
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
+    config_data: web::Data<Arc<Config>>,
     payload: Multipart,
     req: HttpRequest,
     path: web::Path<(String, String)>,
@@ -488,8 +490,7 @@ pub async fn sync_app(
         .map(|dt| _decode(dt, map.get("c")).unwrap());
 
     // add session
-    let paths = Settings::new().unwrap().paths;
-    let session_db_path = &paths.session_db_path;
+    let session_db_path = config_data.session_db_path();
     let (sn, _) = get_session(&session_manager, map, &session_db_path)?;
 
     match name.as_str() {
@@ -502,7 +503,8 @@ pub async fn sync_app(
 
             // response data
             if let Some(dt) = data {
-                let outdata = get_resp_data(mtd, bd.clone(), &dt, session_manager, paths).await?;
+                let outdata =
+                    get_resp_data(mtd, bd.clone(), &dt, session_manager, config_data).await?;
                 Ok(HttpResponse::Ok().body(outdata))
             } else {
                 Err(ApplicationError::ValueNotFound("Data is empty".to_string()))

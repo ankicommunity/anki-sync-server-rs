@@ -1,166 +1,61 @@
-#![forbid(unsafe_code)]
+pub mod config;
 mod db;
 mod error;
 mod media;
-pub mod parse;
+pub mod parse_args;
+pub mod server;
 pub mod session;
 pub mod sync;
 pub mod user;
-use self::{
-    session::SessionManager,
-    sync::{favicon, sync_app_no_fail, welcome},
-    user::{create_auth_db, user_manage},
-};
-use actix_web::{middleware, web, App, HttpServer};
-use anki::{backend::Backend, i18n::I18n};
 #[cfg(feature = "tls")]
-use parse::conf::LocalCert;
-use parse::{
-    conf::{create_conf, Settings},
-    parse,
-};
-#[cfg(feature = "tls")]
-use rustls::ServerConfig;
-#[cfg(feature = "tls")]
-use std::fs::File;
-#[cfg(feature = "tls")]
-use std::io::BufReader;
-use std::path::Path;
-use std::sync::Mutex;
-use user::create_account;
-/// "cert.pem" "key.pem"
-#[cfg(feature = "tls")]
-fn load_ssl(localcert: LocalCert) -> Result<Option<ServerConfig>, error::ApplicationError> {
-    // load ssl keys
-    if localcert.ssl_enable {
-        let cert = localcert.cert_file;
-        let key = localcert.key_file;
-        let cert_file = &mut BufReader::new(File::open(cert)?);
-        let key_file = &mut BufReader::new(File::open(key)?);
-        let cert_chain: Vec<rustls::Certificate> = rustls_pemfile::certs(cert_file)?
-            .into_iter()
-            .map(|v| rustls::Certificate(v))
-            .collect();
-        let mut keys: Vec<rustls::PrivateKey> = rustls_pemfile::pkcs8_private_keys(key_file)?
-            .into_iter()
-            .map(|v| rustls::PrivateKey(v))
-            .collect();
-        if keys.is_empty() {
-            eprintln!("Could not locate PKCS 8 private keys.");
-            std::process::exit(1);
-        }
-        let config = ServerConfig::builder()
-            .with_safe_default_cipher_suites()
-            .with_safe_default_kx_groups()
-            .with_safe_default_protocol_versions()?
-            .with_no_client_auth()
-            .with_single_cert(cert_chain, keys.remove(0))?;
-        Ok(Some(config))
-    } else {
-        Ok(None)
-    }
-}
-async fn server_builder(addr: String) {
-    std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-    env_logger::init();
-    let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
-    let tr = I18n::template_only();
-    let logger = anki::log::default_logger(None).expect("Failed to build logger");
-    let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
-    HttpServer::new(move || {
-        App::new()
-            .app_data(session_manager.clone())
-            .app_data(bd.clone())
-            .service(welcome)
-            .service(favicon)
-            .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
-            .wrap(middleware::Logger::default())
-    })
-    .bind(addr)
-    .expect("Failed to bind with rustls.")
-    .run()
-    .await
-    .expect("server build error");
-}
-#[cfg(feature = "tls")]
-async fn server_builder_tls(addr: String, c: rustls::server::ServerConfig) {
-    std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-    env_logger::init();
-    let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
-    let tr = I18n::template_only();
-    let logger = anki::log::default_logger(None).expect("Failed to build logger");
-    let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
-    HttpServer::new(move || {
-        App::new()
-            .app_data(session_manager.clone())
-            .app_data(bd.clone())
-            .service(welcome)
-            .service(favicon)
-            .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
-            .wrap(middleware::Logger::default())
-    })
-    .bind_rustls(addr, c)
-    .expect("Failed to bind with rustls.")
-    .run()
-    .await
-    .expect("server build error");
-}
+use self::server::{load_ssl, server_builder_tls};
+use self::{config::Config, server::server_builder, user::create_auth_db};
+
 #[actix_web::main]
 async fn main() -> Result<(), ()> {
     //cli argument  parse
-    let matches = parse();
-    // set config path if parsed and write conf settings
-    // to path
-    let conf_path = Path::new(
-        matches
-            .value_of("config")
-            .expect("Could not parse config from args"),
-    );
-    create_conf(conf_path);
-    // read config file
-    let conf = Settings::new().expect("Failed to populate settings from file.");
-
-    // create db if not exist
-    let auth_path = conf.paths.auth_db_path;
-    create_auth_db(&auth_path).expect("Failed to create auth database.");
-    // enter into account manage if subcommand exists,else run server
-    if matches.subcommand_name().is_some() {
-        if let Err(e) = user_manage(matches, auth_path) {
-            eprintln!("Error managing users: {}", e);
-            return Err(());
-        };
-        Ok(())
-    } else {
-        //    run ankisyncd without any sub-command
-
-        if let Err(e) = create_account(conf.account, auth_path) {
-            eprintln!("Error creating account: {}", e);
+    let matches = parse_args::parse_arguments();
+    // Display config
+    if matches.is_present("defaults") {
+        let default_yaml = Config::default().to_string().expect("Failed to serialize.");
+        println!("{}", default_yaml);
+        return Ok(());
+    }
+    // read config file if needed
+    let conf = match parse_args::config_from_arguments(&matches) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error while getting configuration: {}", e);
             return Err(());
         }
-        let addr = format!("{}:{}", conf.address.host, conf.address.port);
-        #[cfg(feature = "tls")]
-        let lc = conf.localcert;
-        #[cfg(feature = "tls")]
-        let enable = lc.ssl_enable;
-        #[cfg(feature = "tls")]
-        let tls_conf = match load_ssl(lc) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Error while setting up ssl: {}", e);
-                return Err(());
-            }
-        };
-        if cfg!(feature = "tls") {
-            #[cfg(feature = "tls")]
-            if enable {
-                #[cfg(feature = "tls")]
-                server_builder_tls(addr, tls_conf.unwrap()).await;
-            } else {
-                server_builder(addr.clone()).await;
-            }
+    };
+    // create db if not exist
+    let auth_path = conf.auth_db_path();
+    create_auth_db(&auth_path).expect("Failed to create auth database.");
+
+    // Manage account if needed, exit if this is the case
+    if parse_args::manage_user(&matches, &auth_path) {
+        return Ok(());
+    }
+
+    #[cfg(feature = "tls")]
+    if cfg!(feature = "tls") {
+        if conf.encryption_enabled() {
+            let tls_conf = match load_ssl(conf.encryption_config().unwrap()) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Error while setting up ssl: {}", e);
+                    return Err(());
+                }
+            };
+            server_builder_tls(&conf, tls_conf).await;
             return Ok(());
         }
-        server_builder(addr).await;
-        Ok(())
+    } else {
+        if conf.encryption_enabled() {
+            eprintln!("TLS encryption is enabled but will be ignored as encryption support was not built in the binary.");
+        }
     }
+    server_builder(&conf).await;
+    Ok(())
 }

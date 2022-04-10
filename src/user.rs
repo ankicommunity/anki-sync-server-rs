@@ -1,5 +1,5 @@
 use crate::db::fetchone;
-use crate::parse::conf::Account;
+//use crate::parse::conf::Account;
 use anki::sync::http::HostKeyRequest;
 use clap::ArgMatches;
 use rand::{rngs::OsRng, RngCore};
@@ -97,6 +97,7 @@ fn del_user<P: AsRef<Path>>(username: &str, dbpath: P) -> Result<(), UserError> 
     conn.close()?;
     Ok(())
 }
+/*
 // insert record into db if username is not empty in Settings.toml
 pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) -> Result<(), UserError> {
     // insert record into db if username is not empty,
@@ -122,6 +123,7 @@ pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) -> Result<(),
     };
     Ok(())
 }
+*/
 pub fn create_auth_db<P: AsRef<Path>>(p: P) -> Result<(), UserError> {
     let sql = "CREATE TABLE IF NOT EXISTS auth
 (username VARCHAR PRIMARY KEY, hash VARCHAR)";
@@ -133,7 +135,7 @@ pub fn create_auth_db<P: AsRef<Path>>(p: P) -> Result<(), UserError> {
 }
 
 /// command-line user management
-pub fn user_manage<P: AsRef<Path>>(matches: ArgMatches, dbpath: P) -> Result<(), UserError> {
+pub fn user_manage<P: AsRef<Path>>(matches: &ArgMatches, dbpath: P) -> Result<(), UserError> {
     match matches.subcommand() {
         Some(("user", user_mach)) => {
             if user_mach.is_present("add") {
