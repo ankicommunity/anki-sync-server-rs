@@ -4,8 +4,8 @@ use std::path::Path;
 fn main() {
     // should consider native build on arm platform
 
-    // used in cross compile
-    // arm-unknown-linux-musleabihf
+    // used in cross compile while building with CD
+    // such as arm-unknown-linux-musleabihf
     let target = env::var("TARGET").expect("TARGET was not set");
     if target.contains("arm") && target.contains("musl") {
         // find and link static sqlite3 lib
@@ -14,7 +14,7 @@ fn main() {
         println!("cargo:rustc-link-lib=static=sqlite3");
     }
 
-    let pat = "rustls";
+    let pat = "tls";
     let key = format!("CARGO_FEATURE_{}", pat).to_uppercase();
     if env::var_os(key).is_some() {
         println!("cargo:rustc-cfg=feature=\"{}\"", pat)

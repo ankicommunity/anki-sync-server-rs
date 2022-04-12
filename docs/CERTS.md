@@ -6,7 +6,7 @@ that enable more secure connection
 such as in semi-open LAN environment.
 This requires the syncserver to be compiled with the `tls` feature (pass `--feature tls` to cargo when building).
 
-Open `Settings.toml` with a text editor
+Open `ankisyncd.toml` with a text editor
 and modify following lines to enable and set certificates paths:
 ```
 #make ssl_enable true

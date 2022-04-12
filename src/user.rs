@@ -243,13 +243,6 @@ pub fn authenticate<P: AsRef<Path>>(
     }
 }
 
-#[test]
-fn test_relpath() {
-    let r = "src";
-    println!("{}", env::current_dir().unwrap().display());
-    //    [Ok(DirEntry("src\\appconfig.rs")),]
-    println!("{:?}", Path::new(r).read_dir().unwrap().collect::<Vec<_>>())
-}
 //extract salt
 // #[test]
 // fn test_crt_pass_hash(){
