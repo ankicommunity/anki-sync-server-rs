@@ -26,4 +26,8 @@ pub enum ApplicationError {
     Unknown,
     #[error(transparent)]
     UserError(#[from] crate::user::UserError),
+    #[error("Error while serializing data: {0}")]
+    SerdeTomlSerializingError(#[from] toml::ser::Error),
+    #[error("Error while deserializing data: {0}")]
+    SerdeTomlDeserializingError(#[from] toml::de::Error),
 }
