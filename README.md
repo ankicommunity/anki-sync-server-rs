@@ -10,7 +10,7 @@ This is a rust (still sqlite c library backed) take on anki sync server (for a m
 ## How to use anki-sync-server-rs
 
 1. Install anki-sync-server-rs, see underneath or [INSTALL.md](docs/INSTALL.md) for more information.
-2. Configure it (see template configuration `Settings.toml`)
+2. Configure it (see template configuration `ankisyncd.toml`)
 3. Run the server
 4. Add user to the server
 5. Configure your client to sync with the custom server, see [here](docs/ANKI_CLIENTS_SETUP.md)
@@ -40,9 +40,9 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 #### MacOS
 
 1. Grab binray from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it,`ankisyncd_x.x.x-macOS_x86_64.zip` for x86-64 MacOS.
-2. Tweak the configuration `Settings.toml` to your liking
+2. Tweak the configuration `ankisyncd.toml` to your liking (if you want to use it)
 3. Run server (double click) `ankisyncd`
-4. Add user using command line `./ankisyncd user --add username password` (use `./ankisyncd.exe user --help` for more on user management)
+4. Add user using command line `./ankisyncd user --add username password` (use `./ankisyncd.exe user --help` for more on user management,add `--config ANKISYNCD_CONFIG_PATH` to the command when using a config file)
 5. Enjoy!
 
 ### Containerized build

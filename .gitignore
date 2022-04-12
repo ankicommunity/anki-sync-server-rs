@@ -5,7 +5,6 @@
 # Ignore anki repo clone
 /anki/
 # Ignore test db and files when running in dev folder
-Settings.toml
 auth.db
 session.db
 collections/

@@ -100,7 +100,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/arm-unknown-linux-musleabihf/release/ankisyncd output/
-          cp scripts/Settings.toml output/
+          cp ankisyncd.toml output/
          
 
       - name: Upload artifact
@@ -144,7 +144,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/release/ankisyncd output/
-          cp scripts/Settings.toml output/
+          cp ankisyncd.toml output/
          
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -190,7 +190,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target/release/ankisyncd output/
-          cp scripts/Settings.toml output/
+          cp ankisyncd.toml output/
          
 
       - name: Upload artifact
@@ -230,7 +230,7 @@ jobs:
       - name: Copy files to output
         run: |
           cp target\release\ankisyncd.exe output\
-          cp scripts\Settings.toml output\
+          cp ankisyncd.toml output\
          
 
       - name: Upload artifact
