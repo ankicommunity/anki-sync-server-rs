@@ -1,0 +1,58 @@
+# from https://github.com/marketplace/actions/docker-buildx
+name: builddocker
+
+on:
+  push:
+    branches: master
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up python
+        uses: actions/setup-python@v2
+
+      # clone and patch anki library  
+      - name: Clone patch Anki
+        run: sh ./scripts/clone_patch_anki
+          
+      # set up and run pre-commit pre-commit run --all-files
+      - name: run pre-commit
+        uses: pre-commit/action@v2.0.3
+
+      -
+        name: Prepare
+        id: prepare
+        run: |
+          DOCKER_IMAGE=ankicommunity/anki-sync-server-rs
+          DOCKER_PLATFORMS=linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+          TAGS="$TAGS --tag ${DOCKER_IMAGE}:latest"
+
+          echo ::set-output name=docker_image::${DOCKER_IMAGE}
+          echo ::set-output name=buildx_args::--platform ${DOCKER_PLATFORMS} \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            ${TAGS} --file ./Dockerfile .
+      -
+        name: Set up Docker Buildx
+        uses: crazy-max/ghaction-docker-buildx@v3
+      -
+        name: Docker Buildx (build)
+        run: |
+          docker buildx build --output "type=image,push=false" ${{ steps.prepare.outputs.buildx_args }}
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      -
+        name: Docker Buildx (push)
+        run: |
+          docker buildx build --output "type=image,push=true" ${{ steps.prepare.outputs.buildx_args }}
+      -
+        name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ steps.prepare.outputs.docker_image }}:latest
