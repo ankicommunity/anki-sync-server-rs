@@ -23,7 +23,7 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 
 #### Linux
 
-1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux_x86_64_xxx.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-armv6_muslc.tar.gz` for armv6 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
+1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, `ankisyncd_x.x.x-linux_x86_64_glibc.tar.gz` for x86-64 linux, `ankisyncd-x.x.x-armv6_muslc.tar.gz` for armv6 32bit NEON board under linux) or even better build it from source (see `INSTALL.md`)
 2. Tweak the configuration `ankisyncd.toml` to your liking (if you want to use it)
 3. Run server `./ankisyncd` (use `--config ANKISYNCD_CONFIG_PATH` if needed)
 4. Add user `./ankisyncd user --add username password` (use `./ankisyncd user --help` for more on user management, add `--config ANKISYNCD_CONFIG_PATH` to the command when using a config file)
@@ -45,9 +45,9 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 4. Add user using command line `./ankisyncd user --add username password` (use `./ankisyncd.exe user --help` for more on user management,add `--config ANKISYNCD_CONFIG_PATH` to the command when using a config file)
 5. Enjoy!
 
-### Containerized build
+### Containerized build/install
 
-For easier development/build/deployment without installing any toolchain see [containerized build](docs/CONTAINER.md)
+buit images from docker hub for arm64 and amd64 are available. Or you can build by yourselves, see [containerized build](docs/CONTAINER.md)
 
 ## How to contribute
 

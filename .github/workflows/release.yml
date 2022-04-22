@@ -23,21 +23,19 @@ jobs:
 
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          sh ./scripts/clone_patch_anki
-          ls anki
+        run: sh ./scripts/clone_patch_anki
 
-      # this may not succeed?
       - name: Add cargo taget armv6
         run: rustup target add arm-unknown-linux-musleabihf
-
-      - name: Download arm-musl-gcc
+      #with musl c
+      - name: Download cross-compile toolchains musl
         run: wget  -P $HOME https://musl.cc/arm-linux-musleabihf-cross.tgz
 
-      - name: unpack arm-musl-gcc
+      - name: unpack cross-compile toolchains musl
         run: tar -zxvf $HOME/arm-linux-musleabihf-cross.tgz -C $HOME
-      # used to compile openssl
-      - name: Download arm-gnueabihf-gcc 
+
+      # used to cross compile openssl and sqlite
+      - name: Download cross-compile toolchains gnu 
         run: |
           git clone --depth 1 https://github.com/raspberrypi/tools.git $HOME/rpitools
           export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
@@ -52,19 +50,16 @@ jobs:
       - name: Compile openssl
         run: | 
           export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
-          arm-linux-gnueabihf-gcc -v
 
           export MACHINE=armv7
           export ARCH=arm
           export CC=arm-linux-gnueabihf-gcc
-          cc -v
 
           mkdir -p $HOME/openssl
           cd openssl-1.1.1f
           ./config shared --prefix=$HOME/anki-sync-server-rs/openssl && make 
           make install
           cd ..
-          ls $HOME/anki-sync-server-rs/openssl/include
 
       # compile sqlite
       - name: Download and unpack lib sqlite3
@@ -81,8 +76,6 @@ jobs:
       # build static-linked binary for armv6 (also suitable for aarch64)
       - name: Build 
         run: | 
-          ls $HOME/anki-sync-server-rs/openssl/lib
-         
           export OPENSSL_LIB_DIR=$HOME/anki-sync-server-rs/openssl/lib
           export OPENSSL_INCLUDE_DIR=$HOME/anki-sync-server-rs/openssl/include
           export OPENSSL_STATIC=true
@@ -125,9 +118,8 @@ jobs:
       
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          sh ./scripts/clone_patch_anki
-          ls anki
+        run: sh ./scripts/clone_patch_anki
+
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -171,8 +163,7 @@ jobs:
         
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          python ./scripts/clone_patch_anki.py
+        run: sh ./scripts/clone_patch_anki
      
 
       - name: Build
@@ -215,8 +206,7 @@ jobs:
 
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          .\scripts\clone_patch_anki.bat
+        run: .\scripts\clone_patch_anki.bat
           
       - name: Build
         uses: actions-rs/cargo@v1

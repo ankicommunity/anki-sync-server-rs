@@ -44,4 +44,4 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/anki-sync-server-rs:latest
+          tags: ankicommunity/anki-sync-server-rs:latest
