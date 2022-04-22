@@ -1,0 +1,15 @@
+
+[listen]
+host = "0.0.0.0"
+port = 27701
+
+[paths]
+# set root_dir as working dir where server data(collections folder) and database(auth.db...) reside
+root_dir = "/app"
+
+# The following section is optional,
+# set it up if your server is compiled with tls support
+[encryption]
+ssl_enable = false
+cert_file = ""
+key_file = ""

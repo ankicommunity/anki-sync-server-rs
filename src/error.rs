@@ -9,6 +9,7 @@ pub enum ApplicationError {
     #[error("Json parsing error: {0}")]
     JsonParsing(#[from] serde_json::Error),
     // Todo get this as a from anki error
+    // https://github.com/ankicommunity/anki-sync-server-rs/issues/40
     #[error("Anki lib error")]
     AnkiError,
     #[error("Zip parsing error: {0}")]

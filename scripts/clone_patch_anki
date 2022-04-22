@@ -1,15 +1,32 @@
 #!/bin/sh
-set -eu
-#R the file was created by @redmie
+# set -eu
+
+realpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo  "$REALPATH"
+}
+#realpath "$@"
+
+PROJECT_ROOT=$(realpath)   # or result=`myfunc`
 ANKI_REPO_URL=${ANKI_REPO_URL:-"https://github.com/ankitects/anki"}
 ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
 
-PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
-ANKI_PATCH_FOLDER="$PROJECT_ROOT/anki_patch/"
+#PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
+ANKI_PATCH_FOLDER="$PROJECT_ROOT./anki_patch/"
 ANKI_FILE_SUFFIX="_anki_rslib.patch"
 
 echo "Cloning anki from $ANKI_REPO_URL"
 cd "$PROJECT_ROOT"
+# remove anki lib in case patched cache exists in docker build during github action
+rm -fr anki
 git clone "$ANKI_REPO_URL"
 echo "Checking out commit $ANKI_COMMIT and applying patch"
 cd anki

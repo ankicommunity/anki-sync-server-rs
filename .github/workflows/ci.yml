@@ -43,8 +43,7 @@ jobs:
 
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          python ./scripts/clone_patch_anki.py
+        run: sh ./scripts/clone_patch_anki
           
       # set up and run pre-commit pre-commit run --all-files
       - name: run pre-commit
@@ -74,8 +73,7 @@ jobs:
       
       # clone and patch anki library  
       - name: Clone patch Anki
-        run: |
-          .\scripts\clone_patch_anki.bat
+        run: .\scripts\clone_patch_anki.bat
       
       # set up and run pre-commit pre-commit run --all-files
       - name: Set up python
