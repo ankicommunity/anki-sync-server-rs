@@ -12,17 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up python
-        uses: actions/setup-python@v2
-
-      # clone and patch anki library  
-      - name: Clone patch Anki
-        run: sh ./scripts/clone_patch_anki
-          
-      # set up and run pre-commit pre-commit run --all-files
-      - name: run pre-commit
-        uses: pre-commit/action@v2.0.3
-
        # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
