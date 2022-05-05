@@ -92,22 +92,48 @@ async fn operation_hostkey(
     let hkres = HostKeyResponse { key: hkey };
     Ok(Some(hkres))
 }
-fn _decode(data: &[u8], compression: Option<&Vec<u8>>) -> Result<Vec<u8>, ApplicationError> {
-    let d = if let Some(x) = compression {
-        let c = String::from_utf8(x.to_vec())?;
-        if c == "1" {
-            let mut d = GzDecoder::new(data);
-            let mut b = vec![];
-            d.read_to_end(&mut b)?;
-            b
+///Uncompresses a Gz Encoded vector of bytes according to field c(compression) from request map
+/// and returns a Vec\<u8>
+///
+/// return file path in bytes if sync method is (full)upload
+fn _decode(
+    data: Vec<u8>,
+    compression: Option<&Vec<u8>>,
+    mtd: Option<Method>,
+    session: Option<Session>,
+) -> Result<Vec<u8>, ApplicationError> {
+    let d = if let Some(c) = compression {
+        // ascii code 49 is 1,which means data from request is compressed
+        if c == &vec![49] {
+            // is empty and cannot be passed to uncompress when on full_download sent from Ankidroid client
+            if data.is_empty() {
+                data
+            } else {
+                let mut d = GzDecoder::new(data.as_slice());
+                let mut b = vec![];
+                d.read_to_end(&mut b)?;
+                b
+            }
         } else {
-            data.to_vec()
+            data
         }
     } else {
-        data.to_vec()
+        data
     };
-    Ok(d)
+
+    if mtd == Some(Method::FullUpload) {
+        // write uncompressed data field parsed from request to file,and return
+        // its path ,which used as argument passed to method full_upload,in bytes.
+        // session is safe to unwrap
+        let colpath = format!("{}.tmp", session.unwrap().get_col_path().display());
+        let colp = Path::new(&colpath);
+        fs::write(colp, d)?;
+        Ok(colpath.as_bytes().to_owned())
+    } else {
+        Ok(d)
+    }
 }
+/// parse POST request from client and return a hashmap of key and value
 async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>>> {
     let mut map = HashMap::new();
     // iterate over multipart stream
@@ -215,6 +241,7 @@ async fn adopt_media_changes_from_zip(
     }
     Ok((processed_count, lastusn))
 }
+/// map sync method from type str to Option\<Method>
 fn map_sync_req(method: &str) -> Option<Method> {
     match method {
         "hostKey" => Some(Method::HostKey),
@@ -236,7 +263,7 @@ fn map_sync_req(method: &str) -> Option<Method> {
 /// if not ,get skey ,then get session
 pub fn get_session<P: AsRef<Path>>(
     session_manager: &web::Data<Mutex<SessionManager>>,
-    map: HashMap<String, Vec<u8>>,
+    map: &HashMap<String, Vec<u8>>,
     session_db_path: P,
 ) -> Result<(Option<Session>, Option<String>), ApplicationError> {
     let hkey = if let Some(hk) = map.get("k") {
@@ -277,48 +304,12 @@ pub fn get_session<P: AsRef<Path>>(
     };
     Ok((s, hkey))
 }
-
-// TODO if data is not optional the handling must happen at higher level no use at handling option
-// everywhere
-fn get_request_data(
-    mtd: Option<Method>,
-    sn: Option<Session>,
-    data: Option<Vec<u8>>,
-) -> Result<Option<Vec<u8>>, ApplicationError> {
-    if mtd == Some(Method::FullUpload) {
-        //   write data from client to file ,as its db data,and return
-        // its path in bytes
-        let session = match sn {
-            Some(s) => s,
-            None => {
-                return Err(ApplicationError::ValueNotFound(
-                    "No session passed while getting request data.".to_string(),
-                ))
-            }
-        };
-        let colpath = format!("{}.tmp", session.get_col_path().display());
-        let colp = Path::new(&colpath);
-
-        let d = match data {
-            Some(d) => d,
-            None => {
-                return Err(ApplicationError::ValueNotFound(
-                    "No data passed to get_request_data function".to_string(),
-                ))
-            }
-        };
-        fs::write(colp, d)?;
-        Ok(Some(colpath.as_bytes().to_owned()))
-    } else if mtd == Some(Method::FullDownload) {
-        let v: Vec<u8> = Vec::new();
-        Ok(Some(v))
-    } else {
-        Ok(data)
-    }
-}
-/// open col and add col to backend
+/// we have to reopen collection and put it in backend after handling method `full_upload` or `full-download`
+/// .In order to save time and work,we can reopen it during handling method `meta`
+///
+/// And we have to drop and reopen new collection when user switches to another user
 // TODO if argument is not optional the handling must happen at higher level no use at handling option unwraping inside functions
-fn add_col(
+fn reopen_col(
     mtd: Option<Method>,
     sn: Option<Session>,
     bd: &web::Data<Mutex<Backend>>,
@@ -328,55 +319,41 @@ fn add_col(
             Some(s) => s,
             None => {
                 return Err(ApplicationError::ValueNotFound(
-                    "No session passed while adding column.".to_string(),
+                    "No session passed while adding collection.".to_string(),
                 ))
             }
         };
-        if bd
+
+        // take out col from backend and assign it to a variable
+        let col = bd
             .lock()
             .expect("Failed to lock mutex")
             .col
             .lock()
             .expect("Failed to lock mutex")
-            .is_none()
-        {
-            bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
-        } else {
-            // reopen col(switch col_path)
+            .take();
+        if let Some(c) = col {
             let sname = s.clone().name;
-            // TODO fix this horrible thing
-            if *bd
-                .lock()
-                .expect("Failed to lock mutex")
-                .col
-                .lock()
-                .expect("Failed to lock mutex")
-                .as_ref()
-                .unwrap()
-                .col_path
-                .parent()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                != sname
-            {
-                let old = bd
-                    .lock()
-                    .expect("Failed to lock mutex")
-                    .col
-                    .lock()
-                    .unwrap()
-                    .take()
-                    .unwrap();
-                drop(old);
+            if extract_usrname(&c.col_path) != sname {
                 bd.lock().expect("Failed to lock mutex").col =
                     Arc::new(Mutex::new(Some(s.get_col()?)));
+            } else {
+                bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(c)))
             }
+        } else {
+            bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
         }
     }
     Ok(())
+}
+/// extract usrname  from backend'collection path like .../username/collection.anki2
+fn extract_usrname(path: &Path) -> String {
+    path.parent()
+        .unwrap()
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string()
 }
 /// handle data sync processing with req data,generate data for response
 async fn get_resp_data(
@@ -415,12 +392,9 @@ async fn get_resp_data(
     } else if mtd == Some(Method::FullUpload) {
         Ok(b"OK".to_vec())
     } else if mtd == Some(Method::FullDownload) {
-        let file = String::from_utf8(outdata).unwrap();
+        let file = String::from_utf8(outdata)?;
         let mut file_buffer = vec![];
-        fs::File::open(file)
-            .unwrap()
-            .read_to_end(&mut file_buffer)
-            .unwrap();
+        fs::File::open(file)?.read_to_end(&mut file_buffer)?;
         Ok(file_buffer)
     } else {
         Ok(outdata)
@@ -434,7 +408,7 @@ pub async fn sync_app_no_fail(
     config_data: web::Data<Arc<Config>>,
     payload: Multipart,
     req: HttpRequest,
-    path: web::Path<(String, String)>, //(root,name)
+    path: web::Path<(String, String)>, //(endpoint,sync_method)
 ) -> Result<HttpResponse> {
     match sync_app(session_manager, bd, config_data, payload, req, path).await {
         Ok(v) => Ok(v),
@@ -453,10 +427,10 @@ pub async fn sync_app(
     req: HttpRequest,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ApplicationError> {
-    let (_, name) = path.into_inner();
-    let method = req.method().as_str();
+    let (_, sync_method) = path.into_inner();
+    let req_method = req.method().as_str();
     let mut map = HashMap::new();
-    if method == "GET" {
+    if req_method == "GET" {
         let path_and_query = match req.uri().path_and_query() {
             // TODO precise error type, valuenotfound is becoming a catch all
             None => {
@@ -482,33 +456,26 @@ pub async fn sync_app(
         //  POST
         map = parse_payload(payload).await?
     };
-    let data_frame = map.get("data");
-    // not unzip if compression is None ?
-    // TODO remove unwrap here
-    let data = data_frame
-        .as_ref()
-        .map(|dt| _decode(dt, map.get("c")).unwrap());
-
-    // add session
+    // return an empty vector instead of None if data field is not in request map
+    let data_frame = match map.get("data") {
+        Some(d) => d.to_owned(),
+        None => Vec::new(),
+    };
+    // load session
     let session_db_path = config_data.session_db_path();
-    let (sn, _) = get_session(&session_manager, map, &session_db_path)?;
+    let (sn, _) = get_session(&session_manager, &map, &session_db_path)?;
 
-    match name.as_str() {
-        // all normal sync url eg chunk..
+    let mtd = map_sync_req(sync_method.as_str());
+    // not uncompress if compression is None
+    let data = _decode(data_frame, map.get("c"), mtd, sn.clone())?;
+    match sync_method.as_str() {
+        // all normal sync methods eg chunk..
         op if OPERATIONS.contains(&op) => {
-            // get request data
-            let mtd = map_sync_req(op);
-            let data = get_request_data(mtd, sn.clone(), data.clone())?;
-            add_col(mtd, sn.clone(), &bd)?;
-
-            // response data
-            if let Some(dt) = data {
-                let outdata =
-                    get_resp_data(mtd, bd.clone(), &dt, session_manager, config_data).await?;
-                Ok(HttpResponse::Ok().body(outdata))
-            } else {
-                Err(ApplicationError::ValueNotFound("Data is empty".to_string()))
-            }
+            // reopen collection
+            reopen_col(mtd, sn.clone(), &bd)?;
+            let outdata =
+                get_resp_data(mtd, bd.clone(), &data, session_manager, config_data).await?;
+            Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
@@ -537,11 +504,10 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) =
-                        match adopt_media_changes_from_zip(&mm, data.unwrap()).await {
-                            Ok(v) => v,
-                            Err(e) => return Err(e),
-                        };
+                    let (procs_cnt, lastusn) = match adopt_media_changes_from_zip(&mm, data).await {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
+                    };
 
                     //    dererial uploadreslt
                     let upres = UploadChangesResult {
@@ -557,7 +523,7 @@ pub async fn sync_app(
                     // sapi5js-42ecd8a6-427ac916-0ba420b0-b1c11b85-f20d5990.mp3 134 None
                     // paste-c9bde250ab49048b2cfc90232a3ae5402aba19c3.jpg 133 c9bde250ab49048b2cfc90232a3ae5402aba19c3
                     // paste-d8d989d662ae46a420ec5d440516912c5fbf2111.jpg 132 d8d989d662ae46a420ec5d440516912c5fbf2111
-                    let rbr: RecordBatchRequest = serde_json::from_slice(&data.unwrap()).unwrap();
+                    let rbr: RecordBatchRequest = serde_json::from_slice(&data)?;
                     let client_lastusn = rbr.last_usn;
                     let server_lastusn = mm.last_usn()?;
 
@@ -583,14 +549,13 @@ pub async fn sync_app(
                     // \"sapi5js-08c91aeb-d6ae72e4-fa3faf05-eff30d1f-581b71c8.mp3\",
                     // \"sapi5js-2750d034-14d4845f-b60dc87b-afb7197f-87930ab7.mp3\"]}
 
-                    let v: ZipRequest = serde_json::from_slice(&data.unwrap()).unwrap();
-                    let d = mm.zip_files(v).unwrap();
+                    let v: ZipRequest = serde_json::from_slice(&data)?;
+                    let d = mm.zip_files(v)?;
 
-                    Ok(HttpResponse::Ok().body(d.unwrap()))
+                    Ok(HttpResponse::Ok().body(d))
                 }
                 "mediaSanity" => {
-                    let locol: FinalizeRequest =
-                        serde_json::from_slice(&data.clone().unwrap()).unwrap();
+                    let locol: FinalizeRequest = serde_json::from_slice(&data)?;
                     let res = if mm.count()? == locol.local {
                         "OK"
                     } else {
@@ -640,12 +605,4 @@ fn test_parse_qs() {
     let query = url.get_parsed_query().unwrap();
     println!("{:?}", url);
     println!("{:?}", query);
-}
-
-#[test]
-fn test_split_path() {
-    let p = r".\A\bc\d";
-    let s = Path::new(p).parent().unwrap().file_name();
-    // bc
-    println!("{:?}", s)
 }

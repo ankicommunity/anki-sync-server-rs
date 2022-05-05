@@ -47,7 +47,7 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 
 ### Containerized build/install
 
-buit images from docker hub for arm64 and amd64 are available. Or you can build by yourselves, see [containerized build](docs/CONTAINER.md)
+buit images from docker hub for arm64 and amd64 are available, or you can build by yourselves, see [containerized](docs/CONTAINER.md)
 
 ## How to contribute
 

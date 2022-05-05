@@ -60,7 +60,7 @@ pub async fn server_builder(config: &Config) {
             .app_data(config_data.clone())
             .service(welcome)
             .service(favicon)
-            .service(web::resource("/{url}/{name}").to(sync_app_no_fail))
+            .service(web::resource("/{endpoint}/{sync_method}").to(sync_app_no_fail))
             .wrap(middleware::Logger::default())
     })
     .bind(config.listen_on())
