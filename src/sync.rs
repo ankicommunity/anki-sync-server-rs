@@ -70,15 +70,10 @@ async fn operation_hostkey(
     session_manager: web::Data<Mutex<SessionManager>>,
     hkreq: HostKeyRequest,
     config: web::Data<Arc<Config>>,
-) -> Result<Option<HostKeyResponse>, ApplicationError> {
+) -> Result<HostKeyResponse, ApplicationError> {
     let auth_db_path = config.auth_db_path();
     let session_db_path = config.session_db_path();
-    let auth_success = authenticate(&hkreq, auth_db_path)?;
-
-    if !auth_success {
-        return Ok(None);
-    }
-
+    authenticate(&hkreq, auth_db_path)?;
     let hkey = gen_hostkey(&hkreq.username);
 
     let dir = config.data_root_path();
@@ -90,7 +85,7 @@ async fn operation_hostkey(
         .save(hkey.clone(), session, session_db_path)?;
 
     let hkres = HostKeyResponse { key: hkey };
-    Ok(Some(hkres))
+    Ok(hkres)
 }
 ///Uncompresses a Gz Encoded vector of bytes according to field c(compression) from request map
 /// and returns a Vec\<u8>
@@ -385,10 +380,11 @@ async fn get_resp_data(
     if mtd == Some(Method::HostKey) {
         let x = serde_json::from_slice(data)?;
         let resp = operation_hostkey(session_manager, x, config).await?;
-        match resp {
-            Some(s) => Ok(serde_json::to_vec(&s)?),
-            None => Err(ApplicationError::Unknown), // TODO better error handling
-        }
+        Ok(serde_json::to_vec(&resp)?)
+        // match resp {
+        //     Some(s) => Ok(serde_json::to_vec(&s)?),
+        //     None => Err(ApplicationError::Unknown), // TODO better error handling
+        // }
     } else if mtd == Some(Method::FullUpload) {
         Ok(b"OK".to_vec())
     } else if mtd == Some(Method::FullDownload) {

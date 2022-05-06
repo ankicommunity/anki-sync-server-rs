@@ -1,5 +1,4 @@
 use crate::db::fetchone;
-//use crate::parse::conf::Account;
 use anki::sync::http::HostKeyRequest;
 use clap::ArgMatches;
 use rand::{rngs::OsRng, RngCore};
@@ -20,6 +19,8 @@ pub enum UserError {
     IO(#[from] io::Error),
     #[error("Missing values in parameter: {0}")]
     MissingValues(String),
+    #[error("Authentication error: {0}")]
+    Authentication(String),
     #[error("Unknown data user error")]
     Unknown,
 }
@@ -71,11 +72,11 @@ fn add_user_to_auth_db<P: AsRef<Path>>(
     let conn = Connection::open(&dbpath)?;
     conn.execute(sql, [username, pass_hash.as_str()])?;
     conn.close()?;
-    let user_path = match dbpath.as_ref().to_owned().parent() {
+    let user_dir = match dbpath.as_ref().to_owned().parent() {
         Some(p) => p.join("collections").join(username),
         None => return Err(UserError::Unknown),
     };
-    create_user_dir(user_path)?;
+    create_user_dir(user_dir)?;
     Ok(())
 }
 pub fn add_user<P: AsRef<Path>>(args: &[String], dbpath: P) -> Result<(), UserError> {
@@ -97,33 +98,6 @@ fn del_user<P: AsRef<Path>>(username: &str, dbpath: P) -> Result<(), UserError> 
     conn.close()?;
     Ok(())
 }
-/*
-// insert record into db if username is not empty in Settings.toml
-pub fn create_account<P: AsRef<Path>>(account: Account, dbpath: P) -> Result<(), UserError> {
-    // insert record into db if username is not empty,
-    let name = account.username;
-    let pass = account.password;
-    // insert record into db if user if not empty,
-    // else start server
-    if !name.is_empty() {
-        if !pass.is_empty() {
-            // look up in db to check if user exist
-            let user_list = user_list(&dbpath)?;
-            //  insert into db if username is not included indb query result
-            if let Some(v) = user_list {
-                if !v.contains(&name) {
-                    add_user(&[name, pass], &dbpath)?;
-                }
-            } else {
-                add_user(&[name, pass], &dbpath)?;
-            }
-        } else {
-            panic!("User fields are not allowed for empty")
-        }
-    };
-    Ok(())
-}
-*/
 pub fn create_auth_db<P: AsRef<Path>>(p: P) -> Result<(), UserError> {
     let sql = "CREATE TABLE IF NOT EXISTS auth
 (username VARCHAR PRIMARY KEY, hash VARCHAR)";
@@ -217,9 +191,8 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
 pub fn authenticate<P: AsRef<Path>>(
     hkreq: &HostKeyRequest,
     auth_db_path: P,
-) -> Result<bool, UserError> {
+) -> Result<(), UserError> {
     let auth_db = auth_db_path.as_ref();
-
     let conn = Connection::open(auth_db)?;
     let sql = "SELECT hash FROM auth WHERE username=?";
     let db_hash: Option<String> = fetchone(&conn, sql, Some(&hkreq.username))?;
@@ -228,18 +201,19 @@ pub fn authenticate<P: AsRef<Path>>(
         let salt = &expect_value[(&expect_value.chars().count() - 16)..];
         let actual_value = create_pass_hash(&hkreq.username, &hkreq.password, salt);
         if actual_value == expect_value {
-            println!("Authentication succeeded for  user {}.", &hkreq.username);
-            Ok(true)
+            println!("Authentication succeeded for user {}.", &hkreq.username);
+            Ok(())
         } else {
-            println!("Authentication failed for user {}", &hkreq.username);
-            Ok(false)
+            Err(UserError::Authentication(format!(
+                "Authentication failed for user {}",
+                &hkreq.username
+            )))
         }
     } else {
-        println!(
-            "Authentication failed for nonexistent user {}.",
+        Err(UserError::Authentication(format!(
+            "Authentication failed for nonexistent user {}",
             &hkreq.username
-        );
-        Ok(false)
+        )))
     }
 }
 
