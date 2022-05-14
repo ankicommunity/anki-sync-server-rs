@@ -1,7 +1,5 @@
 #[cfg(feature = "tls")]
 use crate::config::ConfigCert;
-#[cfg(feature = "tls")]
-use crate::error::ApplicationError;
 use crate::{
     config::Config,
     error::ApplicationError,
