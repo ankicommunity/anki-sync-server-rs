@@ -4,11 +4,13 @@ use crate::config::ConfigCert;
 use crate::error::ApplicationError;
 use crate::{
     config::Config,
+    error::ApplicationError,
     session::SessionManager,
     sync::{favicon, sync_app_no_fail, welcome},
 };
 use actix_web::{middleware, web, App, HttpServer};
 use anki::{backend::Backend, i18n::I18n};
+use rusqlite::Connection;
 #[cfg(feature = "tls")]
 use rustls::ServerConfig;
 #[cfg(feature = "tls")]
@@ -16,7 +18,10 @@ use std::fs::File;
 #[cfg(feature = "tls")]
 use std::io::BufReader;
 
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 #[cfg(feature = "tls")]
 pub fn load_ssl(localcert: &ConfigCert) -> Result<ServerConfig, ApplicationError> {
@@ -44,12 +49,26 @@ pub fn load_ssl(localcert: &ConfigCert) -> Result<ServerConfig, ApplicationError
         .with_single_cert(cert_chain, keys.remove(0))?;
     Ok(config)
 }
-
+/// open session database while server starts,create db if there not exist in provided path
+fn open_session_db(session_db_path: &str) -> Result<Connection, ApplicationError> {
+    if !Path::new(&session_db_path).exists() {
+        let conn = Connection::open(&session_db_path)?;
+        let sql="CREATE TABLE session (hkey VARCHAR PRIMARY KEY, skey VARCHAR, username VARCHAR, path VARCHAR)";
+        conn.execute(sql, [])?;
+        return Ok(conn);
+    }
+    Ok(Connection::open(&session_db_path)?)
+}
 pub async fn server_builder(config: &Config) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
     env_logger::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let config_data = web::Data::new(Arc::new(config.clone()));
+    let session_db_path = config_data.session_db_path();
+    let open_session = web::Data::new(Mutex::new(
+        open_session_db(&session_db_path)
+            .expect("fail to open session database while server starts"),
+    ));
     let tr = I18n::template_only();
     let logger = anki::log::default_logger(None).expect("Failed to build logger");
     let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
@@ -58,6 +77,7 @@ pub async fn server_builder(config: &Config) {
             .app_data(session_manager.clone())
             .app_data(bd.clone())
             .app_data(config_data.clone())
+            .app_data(open_session.clone())
             .service(welcome)
             .service(favicon)
             .service(web::resource("/{endpoint}/{sync_method}").to(sync_app_no_fail))
@@ -76,6 +96,11 @@ pub async fn server_builder_tls(config: &Config, c: rustls::server::ServerConfig
     env_logger::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let config_data = web::Data::new(Arc::new(config.clone()));
+    let session_db_path = config_data.session_db_path();
+    let open_session = web::Data::new(Mutex::new(
+        open_session_db(&session_db_path)
+            .expect("fail to open session database while server starts"),
+    ));
     let tr = I18n::template_only();
     let logger = anki::log::default_logger(None).expect("Failed to build logger");
     let bd = web::Data::new(Mutex::new(Backend::new(tr, true, logger)));
@@ -84,6 +109,7 @@ pub async fn server_builder_tls(config: &Config, c: rustls::server::ServerConfig
             .app_data(session_manager.clone())
             .app_data(bd.clone())
             .app_data(config_data.clone())
+            .app_data(open_session.clone())
             .service(welcome)
             .service(favicon)
             .service(web::resource("/{url}/{name}").to(sync_app_no_fail))

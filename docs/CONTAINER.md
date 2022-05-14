@@ -13,9 +13,9 @@ The `Containerfile` at the root of the repository controls the build process.
 ```
 docker pull ankicommunity/anki-sync-server-rs:latest
 ```
-2. run it in foreground (you can specify the container name by passing `--name=ankisyncd` or use default name)
+2. run it in background (you can specify the container name by passing `--name=ankisyncd` or use default name)
 ```
-docker run  -it ankicommunity/anki-sync-server-rs:latest
+docker run -d -it ankicommunity/anki-sync-server-rs:latest
 ```
 3. add user
 bring up the shell of the `ankisyncd` container(or default container name) and run command

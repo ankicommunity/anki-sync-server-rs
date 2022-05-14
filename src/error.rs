@@ -31,4 +31,6 @@ pub enum ApplicationError {
     SerdeTomlSerializingError(#[from] toml::ser::Error),
     #[error("Error while deserializing data: {0}")]
     SerdeTomlDeserializingError(#[from] toml::de::Error),
+    #[error("session error: {0}")]
+    SessionError(String),
 }
