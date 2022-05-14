@@ -1,23 +1,29 @@
 # Containers 
 
 This file contains:
-1. how to run container from built image
+1. how to run binary from built image
 2. How to use container to build binary
 3. How to run binary in a container
 
 In this manual we will use `podman` command for containers creation/management but it can seamlessly be replaced with `docker` every time it is used.
 
 The `Containerfile` at the root of the repository controls the build process.
-## pull image from hub and run in a container
+## Pull image from hub and run in container
 1. pull image
 ```
 docker pull ankicommunity/anki-sync-server-rs:latest
 ```
-2. run it in foreground (you can specify the container name by passing `--name=ankisyncd` or use default name)
+2. run it in background (you can specify the container name by passing `--name=ankisyncd` or use default name)
 ```
-docker run  -it ankicommunity/anki-sync-server-rs:latest
+docker run -d -it ankicommunity/anki-sync-server-rs:latest
 ```
-
+3. add user
+bring up the shell of the `ankisyncd` container(or default container name) and run command
+```
+docker exec -it ankisyncd /bin/bash
+ankisyncd user -a username password
+exit
+```
 ## Building in container, running on host
 
 1. In the root of the repository run: 

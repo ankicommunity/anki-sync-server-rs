@@ -19,7 +19,7 @@ use std::{
 
 static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
 static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
-/// open zip from vec of u8
+/// open zip from vec of u8,this is a test function and will not be included into the binary.
 fn _open_zip(d: Vec<u8>) -> Result<(), ApplicationError> {
     //    open zip on server
 
@@ -37,7 +37,6 @@ fn _open_zip(d: Vec<u8>) -> Result<(), ApplicationError> {
         if name == "_meta" {
             continue;
         }
-        // let real_name = fmap.get(name).unwrap();
 
         let mut data = Vec::with_capacity(file.size() as usize);
         file.read_to_end(&mut data)?;
@@ -81,7 +80,7 @@ impl MediaManager {
         self.db.execute(sql, params![filename])?;
         Ok(())
     }
-    pub fn zip_files(&self, files: ZipRequest) -> Result<Option<Vec<u8>>, ApplicationError> {
+    pub fn zip_files(&self, files: ZipRequest) -> Result<Vec<u8>, ApplicationError> {
         let buf = vec![];
         let mut invalid_entries = vec![];
         let files = &files.files;
@@ -162,7 +161,7 @@ impl MediaManager {
 
         let w = zip.finish()?;
 
-        Ok(Some(w.into_inner()))
+        Ok(w.into_inner())
     }
     pub fn new<P, P2>(media_folder: P, media_db: P2) -> Result<Self>
     where
