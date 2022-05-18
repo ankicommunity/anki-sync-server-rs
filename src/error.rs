@@ -33,4 +33,6 @@ pub enum ApplicationError {
     SerdeTomlDeserializingError(#[from] toml::de::Error),
     #[error("session error: {0}")]
     SessionError(String),
+    #[error("Error while paring GET request: {0}")]
+    ParseGET(String),
 }

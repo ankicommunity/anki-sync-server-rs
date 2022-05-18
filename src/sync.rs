@@ -10,15 +10,14 @@ use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
-        zip, BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
+         BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
 };
 use rusqlite::Connection;
-use std::{io, sync::Arc};
-
+use std::sync::Arc;
 use crate::error::ApplicationError;
 use crate::session::Session;
 use flate2::read::GzDecoder;
@@ -162,83 +161,8 @@ pub async fn welcome() -> Result<HttpResponse> {
         .content_type("text/plain")
         .body("Anki Sync Server"))
 }
-/// \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
-///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
-/// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
-async fn adopt_media_changes_from_zip(
-    mm: &MediaManager,
-    zip_data: Vec<u8>,
-) -> Result<(usize, i32), ApplicationError> {
-    let media_dir = &mm.media_folder;
-    let reader = io::Cursor::new(zip_data);
-    let mut zip = zip::ZipArchive::new(reader)?;
-    let mut meta_file = zip
-        .by_name("_meta")
-        .expect("Could not find '_meta' file in archive");
-    let mut v = vec![];
-    meta_file.read_to_end(&mut v)?;
 
-    let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v)?;
-
-    let mut media_to_remove = vec![];
-    let mut media_to_add = vec![];
-    let mut fmap = HashMap::new();
-    for (fname, o) in d {
-        if let Some(zip_name) = o {
-            // on ankidroid zip_name is Some("") if
-            // media deleted from client
-            if zip_name.is_empty() {
-                media_to_remove.push(fname);
-            } else {
-                fmap.insert(zip_name, fname);
-            }
-        } else {
-            // probably zip_name is None if on PC deleted
-            media_to_remove.push(fname);
-        }
-    }
-
-    drop(meta_file);
-    let mut usn = mm.last_usn()?;
-    fs::create_dir_all(&media_dir)?;
-    for i in 0..zip.len() {
-        let mut file = zip.by_index(i)?;
-        let name = file.name();
-
-        if name == "_meta" {
-            continue;
-        }
-        let real_name = match fmap.get(name) {
-            None => {
-                return Err(ApplicationError::ValueNotFound(format!(
-                    "Could not find name {} in fmap",
-                    name
-                )))
-            }
-            Some(s) => s,
-        };
-
-        let mut data = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut data)?;
-        //    write zip data to media folder
-        usn += 1;
-        let add = mm.add_file(real_name, &data, usn).await?;
-
-        media_to_add.push(add);
-    }
-    let processed_count = media_to_add.len() + media_to_remove.len();
-    let lastusn = mm.last_usn()?;
-    // db ops add/delete
-
-    if !media_to_remove.is_empty() {
-        mm.delete(media_to_remove.as_slice())?;
-    }
-    if !media_to_add.is_empty() {
-        mm.records_add(media_to_add)?;
-    }
-    Ok((processed_count, lastusn))
-}
-/// map sync method from type str to Option\<Method>
+/// convert  type str of sync method into Option\<Method>
 fn map_sync_method(method: &str) -> Option<Method> {
     match method {
         "hostKey" => Some(Method::HostKey),
@@ -410,7 +334,41 @@ pub async fn sync_app_no_fail(
         }
     }
 }
+/// ```
+/// let url = urlparse(
+///     "/msync/begin?k=0f5c8659ec6771eed3b5d473816699e7&v=anki%2C2.1.49+%287a232b70%29%2Cwin%3A10",
+/// );
+/// let query = url.get_parsed_query().unwrap();
+/// println!("{:?}", query);
+/// ```
+/// {"v": \["anki,2.1.49 (7a232b70),win:10"],
+/// "k": \["0f5c8659ec6771eed\
+/// 3b5d473816699e7"]}
+async fn parse_get_request(req: HttpRequest) -> Result<HashMap<String, Vec<u8>>, ApplicationError> {
+    let mut map = HashMap::new();
+    let path_and_query = match req.uri().path_and_query() {
+        None => {
+            return Err(ApplicationError::ParseGET(
+                "Could not get path and query from HTTP request".to_string(),
+            ))
+        }
+        Some(s) => s,
+    };
+    let qs = urlparse(path_and_query.as_str());
+    let query = match qs.get_parsed_query() {
+        Some(q) => q,
+        None => {
+            return Err(ApplicationError::ParseGET(
+                "Empty query in HTTP request".to_string(),
+            ))
+        }
+    };
+    for (k, v) in query {
+        map.insert(k, v.join("").as_bytes().to_vec());
+    }
 
+    Ok(map)
+}
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
@@ -422,32 +380,11 @@ pub async fn sync_app(
 ) -> Result<HttpResponse, ApplicationError> {
     let (_, sync_method) = path.into_inner();
     let req_method = req.method().as_str();
-    let mut map = HashMap::new();
-    if req_method == "GET" {
-        let path_and_query = match req.uri().path_and_query() {
-            // TODO precise error type, valuenotfound is becoming a catch all
-            None => {
-                return Err(ApplicationError::ValueNotFound(
-                    "Could not get path and query from HTTP request".to_string(),
-                ))
-            }
-            Some(s) => s,
-        };
-        let qs = urlparse(path_and_query.as_str());
-        let query = match qs.get_parsed_query() {
-            Some(q) => q,
-            None => {
-                return Err(ApplicationError::ValueNotFound(
-                    "Empty query in HTTP request".to_string(),
-                ))
-            }
-        };
-        for (k, v) in query {
-            map.insert(k, v.join("").as_bytes().to_vec());
-        }
+    let map = if req_method == "GET" {
+        parse_get_request(req).await?
     } else {
         //  POST
-        map = parse_payload(payload).await?
+        parse_payload(payload).await?
     };
     // return an empty vector instead of None if data field is not in request map
     let data_frame = match map.get("data") {
@@ -480,9 +417,7 @@ pub async fn sync_app(
                     ))
                 }
             };
-            let (md, mf) = session.media_dir_db();
-
-            let mm = MediaManager::new(mf, md)?;
+            let mm = MediaManager::new(&session)?;
             match media_op {
                 "begin" => {
                     let lastusn = mm.last_usn()?;
@@ -496,7 +431,7 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(sbr))
                 }
                 "uploadChanges" => {
-                    let (procs_cnt, lastusn) = match adopt_media_changes_from_zip(&mm, data).await {
+                    let (procs_cnt, lastusn) = match mm.adopt_media_changes_from_zip(data).await {
                         Ok(v) => v,
                         Err(e) => return Err(e),
                     };
@@ -509,12 +444,6 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(upres))
                 }
                 "mediaChanges" => {
-                    //client lastusn 0
-                    // server ls 135
-                    // rec1634015317.mp3 135 None
-                    // sapi5js-42ecd8a6-427ac916-0ba420b0-b1c11b85-f20d5990.mp3 134 None
-                    // paste-c9bde250ab49048b2cfc90232a3ae5402aba19c3.jpg 133 c9bde250ab49048b2cfc90232a3ae5402aba19c3
-                    // paste-d8d989d662ae46a420ec5d440516912c5fbf2111.jpg 132 d8d989d662ae46a420ec5d440516912c5fbf2111
                     let rbr: RecordBatchRequest = serde_json::from_slice(&data)?;
                     let client_lastusn = rbr.last_usn;
                     let server_lastusn = mm.last_usn()?;
@@ -536,11 +465,6 @@ pub async fn sync_app(
                     Ok(HttpResponse::Ok().json(d))
                 }
                 "downloadFiles" => {
-                    // client data :requested filenames
-                    // "{\"files\":[\"paste-ceaa6863ee1c4ee38ed1cd3a0a2719fa934517ed.jpg\",
-                    // \"sapi5js-08c91aeb-d6ae72e4-fa3faf05-eff30d1f-581b71c8.mp3\",
-                    // \"sapi5js-2750d034-14d4845f-b60dc87b-afb7197f-87930ab7.mp3\"]}
-
                     let v: ZipRequest = serde_json::from_slice(&data)?;
                     let d = mm.zip_files(v)?;
 
@@ -584,17 +508,4 @@ fn test_tssecs() {
     let ts = TimestampSecs::now();
     // 1634543952
     println!("{}", ts);
-}
-
-/// {"v": \["anki,2.1.49 (7a232b70),win:10"],
-/// "k": \["0f5c8659ec6771eed\
-/// 3b5d473816699e7"]}
-#[test]
-fn test_parse_qs() {
-    let url = urlparse(
-        "/msync/begin?k=0f5c8659ec6771eed3b5d473816699e7&v=anki%2C2.1.49+%287a232b70%29%2Cwin%3A10",
-    );
-    let query = url.get_parsed_query().unwrap();
-    println!("{:?}", url);
-    println!("{:?}", query);
 }
