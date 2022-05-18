@@ -14,7 +14,7 @@ use std::{
     fs,
     io::Read,
     io::{self, Write},
-    path:: PathBuf,
+    path::PathBuf,
 };
 
 static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
@@ -77,19 +77,19 @@ pub struct MediaManager {
 
 impl MediaManager {
     /// used in media sync method `uploadChanges`
-    /// 
+    ///
     /// this will make changes to server media folder and database,
     /// e.g.delete files from media folder or add files into media folder ,it depends on client request
     ///  ,the same to media database. return count of deleted and added files and `last_usn`
     ///
     /// a part of `_meta` file of zip data from client request is as follows.It is a
     ///  vector of `filename` and `zipname` in tuple.
-    /// 
-    /// `Some("")` or `None` means 
+    ///
+    /// `Some("")` or `None` means
     /// provided files to which filenames point have been deleted from client and will be deleted from
     /// server; `Some("0")` means provided files to which filenames point have been added into the client
     /// and will be added into server.
-    /// 
+    ///
     ///  \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
     ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
     /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
@@ -114,7 +114,7 @@ impl MediaManager {
         for (fname, o) in d {
             if let Some(zip_name) = o {
                 //  zip_name is Some("") if
-                // media file is deleted from ankidroid client 
+                // media file is deleted from ankidroid client
                 if zip_name.is_empty() {
                     media_to_remove.push(fname);
                 } else {
@@ -166,7 +166,7 @@ impl MediaManager {
         }
         Ok((processed_count, lastusn))
     }
-    ///remove records from media db by filename 
+    ///remove records from media db by filename
     fn remove_entry(&self, filename: &str) -> Result<(), ApplicationError> {
         let sql = "delete from media where fname=?";
         self.db.execute(sql, params![filename])?;
@@ -310,10 +310,10 @@ impl MediaManager {
     /// ## example media database records
     /// |filename|usn|checksum|
     /// |---|---|---|
-    /// |2022-03-30_114732.jpg |	1|	772d832009fea3ffeb63306f1016243b6cc170c3|
-    /// |_A4beak.jpg|	2|	6ec66d655b308cedd207f049f570f25b1e5d0007|
-    /// |_A4bend.jpg|	3|	cd8dc6efce26b4aa580ba292d21cc6caad308542|
-    /// |_A4chain.jpg|	4|	03b2df725edfa17e7a022bdadf7c9476ebe14e70|
+    /// |2022-03-30_114732.jpg |1|772d832009fea3ffeb63306f1016243b6cc170c3|
+    /// |_A4beak.jpg|2|6ec66d655b308cedd207f049f570f25b1e5d0007|
+    /// |_A4bend.jpg|3|cd8dc6efce26b4aa580ba292d21cc6caad308542|
+    /// |_A4chain.jpg|4|03b2df725edfa17e7a022bdadf7c9476ebe14e70|
     pub fn last_usn(&self) -> Result<i32, ApplicationError> {
         let sql = "SELECT usn FROM media ORDER BY usn DESC";
         let ls: Option<i32> = fetchone(&self.db, sql, None)?;

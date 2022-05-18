@@ -1,5 +1,4 @@
 use rusqlite::{types::FromSql, Connection, OptionalExtension, Result};
-use std::path::Path;
 pub fn fetchone<T: FromSql>(
     conn: &Connection,
     sql: &str,

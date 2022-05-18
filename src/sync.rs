@@ -1,3 +1,5 @@
+use crate::error::ApplicationError;
+use crate::session::Session;
 use crate::{
     config::Config,
     media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
@@ -10,23 +12,21 @@ use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
     media::sync::{
-         BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
+        BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
         SyncBeginResult,
     },
     sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
 };
-use rusqlite::Connection;
-use std::sync::Arc;
-use crate::error::ApplicationError;
-use crate::session::Session;
 use flate2::read::GzDecoder;
 use futures_util::{AsyncWriteExt, TryStreamExt as _};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use rusqlite::Connection;
 use serde_json;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
