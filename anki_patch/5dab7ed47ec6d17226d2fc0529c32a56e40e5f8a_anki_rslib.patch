@@ -1,15 +1,15 @@
-From 480a572137a51316bab2d97f2435cdfe328c462c Mon Sep 17 00:00:00 2001
+From 4ad80bcbb5a85bee5f9e6476d873b648464d84c8 Mon Sep 17 00:00:00 2001
 From: dobefore <1432338032@qq.com>
-Date: Sun, 27 Mar 2022 11:09:31 +0800
-Subject: [PATCH] create patch
+Date: Sun, 22 May 2022 17:53:06 +0800
+Subject: [PATCH] patch
 
 ---
  rslib/src/backend/mod.rs    |  2 +-
  rslib/src/collection/mod.rs |  2 +-
  rslib/src/lib.rs            |  4 ++--
  rslib/src/media/files.rs    |  6 +++---
- rslib/src/media/sync.rs     | 40 ++++++++++++++++++++-----------------
- 5 files changed, 29 insertions(+), 25 deletions(-)
+ rslib/src/media/sync.rs     | 41 +++++++++++++++++++++----------------
+ 5 files changed, 30 insertions(+), 25 deletions(-)
 
 diff --git a/rslib/src/backend/mod.rs b/rslib/src/backend/mod.rs
 index b4ec28cfa..4261a1d5f 100644
@@ -91,20 +91,21 @@ index b56b1baa3..6921c1318 100644
          Ok(file) => file,
          Err(e) => {
 diff --git a/rslib/src/media/sync.rs b/rslib/src/media/sync.rs
-index da50eda88..14664bbe9 100644
+index da50eda88..1c10470fe 100644
 --- a/rslib/src/media/sync.rs
 +++ b/rslib/src/media/sync.rs
-@@ -1,5 +1,9 @@
+@@ -1,5 +1,10 @@
  // Copyright: Ankitects Pty Ltd and contributors
  // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 +pub use unicode_normalization;
 +pub use zip;
 +pub use tokio::io::BufWriter;
 +pub use hex;
++pub use async_trait; 
  
  use std::{
      borrow::Cow,
-@@ -59,17 +63,17 @@ where
+@@ -59,17 +64,17 @@ where
      log: Logger,
  }
  
@@ -130,7 +131,7 @@ index da50eda88..14664bbe9 100644
  }
  
  #[derive(Debug, Clone, Copy)]
-@@ -88,10 +92,10 @@ enum RequiredChange {
+@@ -88,10 +93,10 @@ enum RequiredChange {
      RemovePending,
  }
  
@@ -144,7 +145,7 @@ index da50eda88..14664bbe9 100644
  }
  
  #[derive(Debug, Deserialize)]
-@@ -131,15 +135,15 @@ struct UploadReply {
+@@ -131,15 +136,15 @@ struct UploadReply {
      current_usn: i32,
  }
  
