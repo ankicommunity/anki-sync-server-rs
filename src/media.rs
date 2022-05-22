@@ -1,12 +1,16 @@
-use crate::{error::ApplicationError, session::Session};
-use rusqlite::{params, Connection, Result};
-
 use crate::db::fetchone;
+use crate::{error::ApplicationError, session::Session};
+use actix_web::HttpResponse;
 #[allow(unused_imports)]
 use anki::media::{
     files::{add_data_to_folder_uniquely, data_for_file, normalize_filename, sha1_of_data},
-    sync::{hex, unicode_normalization, zip},
+    sync::{
+        async_trait::async_trait, hex, unicode_normalization, zip, FinalizeRequest,
+        FinalizeResponse, RecordBatchRequest, SyncBeginResponse, SyncBeginResult,
+    },
 };
+use rusqlite::{params, Connection, Result};
+
 use serde_derive::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
@@ -74,8 +78,98 @@ pub struct MediaManager {
     pub db: Connection,
     pub media_folder: PathBuf,
 }
+#[async_trait(?Send)]
+trait MediaSyncMethod {
+    async fn begin(&self, session: Session) -> Result<HttpResponse, ApplicationError>;
+    async fn upload_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError>;
+    async fn download_files(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError>;
+    async fn media_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError>;
+    async fn media_sanity(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError>;
+}
+#[async_trait(?Send)]
+impl MediaSyncMethod for MediaManager {
+    async fn begin(&self, session: Session) -> Result<HttpResponse, ApplicationError> {
+        let lastusn = self.last_usn()?;
+        let sbr = SyncBeginResult {
+            data: Some(SyncBeginResponse {
+                sync_key: session.skey(),
+                usn: lastusn,
+            }),
+            err: String::new(),
+        };
+        Ok(HttpResponse::Ok().json(sbr))
+    }
 
+    async fn upload_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
+        let (procs_cnt, lastusn) = match self.adopt_media_changes_from_zip(data).await {
+            Ok(v) => v,
+            Err(e) => return Err(e),
+        };
+
+        let upres = UploadChangesResult {
+            data: Some(vec![procs_cnt, lastusn as usize]),
+            err: String::new(),
+        };
+        Ok(HttpResponse::Ok().json(upres))
+    }
+    async fn download_files(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
+        let filename_entries: ZipRequest = serde_json::from_slice(&data)?;
+        let d = self.zip_files(filename_entries)?;
+
+        Ok(HttpResponse::Ok().body(d))
+    }
+    async fn media_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
+        let rbr: RecordBatchRequest = serde_json::from_slice(&data)?;
+        let client_lastusn = rbr.last_usn;
+        let server_lastusn = self.last_usn()?;
+
+        let d = if client_lastusn < server_lastusn || client_lastusn == 0 {
+            let mut chges = self.changes(client_lastusn)?;
+            chges.reverse();
+            MediaRecordResult {
+                data: Some(chges),
+                err: String::new(),
+            }
+        } else {
+            MediaRecordResult {
+                data: Some(Vec::new()),
+                err: String::new(),
+            }
+        };
+
+        Ok(HttpResponse::Ok().json(d))
+    }
+    async fn media_sanity(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
+        let locol: FinalizeRequest = serde_json::from_slice(&data)?;
+        let res = if self.count()? == locol.local {
+            "OK"
+        } else {
+            "FAILED"
+        };
+        let result = FinalizeResponse {
+            data: Some(res.to_owned()),
+            err: String::new(),
+        };
+        Ok(HttpResponse::Ok().json(result))
+    }
+}
 impl MediaManager {
+    /// media sync methods handler ,e.g. `begin`,`uploadChanges` ...
+    pub async fn media_sync(
+        &self,
+        method: &str,
+        session: Session,
+        data: Vec<u8>,
+    ) -> Result<HttpResponse, ApplicationError> {
+        match method {
+            "begin" => self.begin(session).await,
+            "uploadChanges" => self.upload_changes(data).await,
+            "mediaChanges" => self.media_changes(data).await,
+            "downloadFiles" => self.download_files(data).await,
+            "mediaSanity" => self.media_sanity(data).await,
+            _ => Ok(HttpResponse::Ok().finish()),
+        }
+    }
     /// used in media sync method `uploadChanges`
     ///
     /// this will make changes to server media folder and database,

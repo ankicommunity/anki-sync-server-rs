@@ -1,20 +1,12 @@
 use crate::error::ApplicationError;
 use crate::session::Session;
-use crate::{
-    config::Config,
-    media::{MediaManager, MediaRecordResult, UploadChangesResult, ZipRequest},
-    session::SessionManager,
-    user::authenticate,
-};
+use crate::{config::Config, media::MediaManager, session::SessionManager, user::authenticate};
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
 use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
-    media::sync::{
-        BufWriter, FinalizeRequest, FinalizeResponse, RecordBatchRequest, SyncBeginResponse,
-        SyncBeginResult,
-    },
+    media::sync::BufWriter,
     sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
 };
@@ -73,7 +65,7 @@ async fn operation_hostkey(
     hkreq: HostKeyRequest,
     config: web::Data<Arc<Config>>,
     session_db_conn: &Connection,
-) -> Result<HostKeyResponse, ApplicationError> {
+) -> Result<(HostKeyResponse, Session), ApplicationError> {
     let auth_db_path = config.auth_db_path();
     authenticate(&hkreq, auth_db_path)?;
     let hkey = gen_hostkey(&hkreq.username);
@@ -83,20 +75,35 @@ async fn operation_hostkey(
     session_manager
         .lock()
         .expect("Could not lock mutex!")
-        .save(hkey.clone(), session, session_db_conn)?;
+        .save(hkey.clone(), session.clone(), session_db_conn)?;
 
     let hkres = HostKeyResponse { key: hkey };
-    Ok(hkres)
+    Ok((hkres, session))
+}
+/// return file path in bytes if sync method is `fullupload`,else return the same output as the input argument
+fn reprocess_data_frame(
+    data: Vec<u8>,
+    mtd: Option<Method>,
+    session: Session,
+) -> Result<Vec<u8>, ApplicationError> {
+    if mtd == Some(Method::FullUpload) {
+        // write uncompressed data field parsed from request to file,and return
+        // its path ,which used as argument passed to method full_upload,in bytes.
+        // session is safe to unwrap
+        let colpath = format!("{}.tmp", session.col_path().display());
+        let colp = Path::new(&colpath);
+        fs::write(colp, data)?;
+        Ok(colpath.as_bytes().to_owned())
+    } else {
+        Ok(data)
+    }
 }
 ///Uncompresses a Gz Encoded vector of bytes according to field c(compression) from request map
 /// and returns a Vec\<u8>
-///
-/// return file path in bytes if sync method is (full)upload
-fn _decode(
+/// not uncompress if compression is None
+fn decode(
     data: Vec<u8>,
-    compression: Option<&Vec<u8>>,
-    mtd: Option<Method>,
-    session: Option<Session>,
+    compression: Option<&Vec<u8>>
 ) -> Result<Vec<u8>, ApplicationError> {
     let d = if let Some(c) = compression {
         // ascii code 49 is 1,which means data from request is compressed
@@ -117,20 +124,12 @@ fn _decode(
         data
     };
 
-    if mtd == Some(Method::FullUpload) {
-        // write uncompressed data field parsed from request to file,and return
-        // its path ,which used as argument passed to method full_upload,in bytes.
-        // session is safe to unwrap
-        let colpath = format!("{}.tmp", session.unwrap().col_path().display());
-        let colp = Path::new(&colpath);
-        fs::write(colp, d)?;
-        Ok(colpath.as_bytes().to_owned())
-    } else {
-        Ok(d)
-    }
+    Ok(d)
 }
 /// parse POST request from client and return a hashmap of key and value
-async fn parse_payload(mut payload: Multipart) -> Result<HashMap<String, Vec<u8>>> {
+async fn parse_payload(
+    mut payload: Multipart,
+) -> Result<HashMap<String, Vec<u8>>, ApplicationError> {
     let mut map = HashMap::new();
     // iterate over multipart stream
     while let Some(mut field) = payload.try_next().await? {
@@ -162,7 +161,7 @@ pub async fn welcome() -> Result<HttpResponse> {
         .body("Anki Sync Server"))
 }
 
-/// convert  type str of sync method into Option\<Method>
+/// convert type str of sync method into Option\<Method>
 fn map_sync_method(method: &str) -> Option<Method> {
     match method {
         "hostKey" => Some(Method::HostKey),
@@ -182,19 +181,19 @@ fn map_sync_method(method: &str) -> Option<Method> {
 }
 /// load session either from `hkey` or from `skey`
 ///
-/// if all of them are empty (it holds on sync method /hostkey),return None
+/// if all of them are empty (it holds on sync method /hostkey),return Err
 pub fn load_session(
     session_manager: &web::Data<Mutex<SessionManager>>,
     map: &HashMap<String, Vec<u8>>,
     session_db_conn: &Connection,
-) -> Result<Option<Session>, ApplicationError> {
-    let s = if let Some(hk) = map.get("k") {
+) -> Result<Session, ApplicationError> {
+    if let Some(hk) = map.get("k") {
         let hkey = String::from_utf8(hk.to_owned())?;
         let s = session_manager
             .lock()
             .expect("Failed to lock mutex")
             .load(&hkey, session_db_conn)?;
-        Some(s)
+        Ok(s)
         //    http forbidden if seesion is NOne ?
     } else {
         match map.get("sk") {
@@ -205,32 +204,24 @@ pub fn load_session(
                     .expect("Failed to lock mutex")
                     .load_from_skey(&skey, session_db_conn)?;
 
-                Some(s)
+                Ok(s)
             }
-            None => None,
+            None => Err(ApplicationError::SessionError(
+                "load session error sk not found in hashmap".to_string(),
+            )),
         }
-    };
-    Ok(s)
+    }
 }
 /// we have to reopen collection and put it in backend after handling method `full_upload` or `full-download`
 /// .In order to save time and work,we can reopen it during handling method `meta`
 ///
 /// And we have to drop and reopen collection when user switches to another user
-// TODO if argument is not optional the handling must happen at higher level no use at handling option unwraping inside functions
 fn reopen_col(
     mtd: Option<Method>,
-    sn: Option<Session>,
+    session: Session,
     bd: &web::Data<Mutex<Backend>>,
 ) -> Result<(), ApplicationError> {
     if mtd == Some(Method::Meta) {
-        let s = match sn {
-            Some(s) => s,
-            None => {
-                return Err(ApplicationError::SessionError(
-                    "No session passed while reopening collection.".to_string(),
-                ))
-            }
-        };
         // take out col from backend and assign it to a variable
         let col = bd
             .lock()
@@ -240,20 +231,21 @@ fn reopen_col(
             .expect("Failed to lock mutex")
             .take();
         if let Some(c) = col {
-            let sname = s.clone().username;
+            let sname = session.clone().username;
             if extract_usrname(&c.col_path) != sname {
                 bd.lock().expect("Failed to lock mutex").col =
-                    Arc::new(Mutex::new(Some(s.get_col()?)));
+                    Arc::new(Mutex::new(Some(session.open_collection()?)));
             } else {
                 bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(c)))
             }
         } else {
-            bd.lock().expect("Failed to lock mutex").col = Arc::new(Mutex::new(Some(s.get_col()?)));
+            bd.lock().expect("Failed to lock mutex").col =
+                Arc::new(Mutex::new(Some(session.open_collection()?)));
         }
     }
     Ok(())
 }
-/// extract usrname  from backend'collection path like .../username/collection.anki2
+/// extract usrname  from backend'collection path like `.../username/collection.anki2`
 fn extract_usrname(path: &Path) -> String {
     path.parent()
         .unwrap()
@@ -262,14 +254,15 @@ fn extract_usrname(path: &Path) -> String {
         .to_string_lossy()
         .to_string()
 }
-/// handle data sync processing with req data,generate data for response
-async fn get_resp_data(
+/// processing sync procedures using API from anki lib
+/// and return processed data as response
+///
+/// note:some API procedures will not produce the desired data we want,so there is extra handling.
+async fn resp_data(
     mtd: Option<Method>,
     bd: web::Data<Mutex<Backend>>,
     data: &[u8],
-    session_manager: web::Data<Mutex<SessionManager>>,
-    config: web::Data<Arc<Config>>,
-    session_db_conn: &Connection,
+    hostkey_data: Vec<u8>,
 ) -> Result<Vec<u8>, ApplicationError> {
     // TODO fix that we cannot take anything other than the if as we arre unwraping to create
     // outdata
@@ -289,14 +282,18 @@ async fn get_resp_data(
     .await
     .expect("Failed to spawn thread for blocking task");
     let outdata = outdata_result.map_err(|_| ApplicationError::AnkiError)?;
-
+    // extra handling
     if mtd == Some(Method::HostKey) {
-        let x = serde_json::from_slice(data)?;
-        let resp = operation_hostkey(session_manager, x, config, session_db_conn).await?;
-        Ok(serde_json::to_vec(&resp)?)
+        // As hostkey operation has not been implemented in anki lib,here we have to handle it
+        // and return processed data as response.However,the procedure has been handled and the
+        // output is hostkey_data
+        Ok(hostkey_data)
     } else if mtd == Some(Method::FullUpload) {
+        // procedure upload will not produce data,we add this as response
         Ok(b"OK".to_vec())
     } else if mtd == Some(Method::FullDownload) {
+        // procedure download only produces path data of collection db in bytes,
+        // here what we want as response is file data
         let file = String::from_utf8(outdata)?;
         let mut file_buffer = vec![];
         fs::File::open(file)?.read_to_end(&mut file_buffer)?;
@@ -334,7 +331,8 @@ pub async fn sync_app_no_fail(
         }
     }
 }
-/// ```
+///parse client `GET` method and return a hashmap of key and value
+///  ```
 /// let url = urlparse(
 ///     "/msync/begin?k=0f5c8659ec6771eed3b5d473816699e7&v=anki%2C2.1.49+%287a232b70%29%2Cwin%3A10",
 /// );
@@ -369,6 +367,40 @@ async fn parse_get_request(req: HttpRequest) -> Result<HashMap<String, Vec<u8>>,
 
     Ok(map)
 }
+/// parse request method stream from client into a hashmap,include `GET` and `POST`
+async fn parse_request_method(
+    req: HttpRequest,
+    payload: Multipart,
+) -> Result<HashMap<String, Vec<u8>>, ApplicationError> {
+    let req_method = req.method().as_str();
+    if req_method == "GET" {
+        parse_get_request(req).await
+    } else {
+        //  POST
+        parse_payload(payload).await
+    }
+}
+/// return `hostkey` resonse in bytes if user authenticate sucessfully on sync method `hostkey` and session in tuple
+async fn operate_hostkey_no_fail(
+    mtd: Option<Method>,
+    session_manager: web::Data<Mutex<SessionManager>>,
+    config: web::Data<Arc<Config>>,
+    session_db_conn: &Connection,
+    map: &HashMap<String, Vec<u8>>,
+    data: &[u8],
+) -> Result<(Vec<u8>, Session), ApplicationError> {
+    if mtd == Some(Method::HostKey) {
+        // As hostkey operation has not been implemented in anki lib,here we have to handle it
+        // and return processed data as response
+        let x = serde_json::from_slice(data)?;
+        let (hkresp, s) = operation_hostkey(session_manager, x, config, session_db_conn).await?;
+        Ok((serde_json::to_vec(&hkresp)?, s))
+    } else {
+        let s = load_session(&session_manager, map, session_db_conn)?;
+        Ok((Vec::new(), s))
+    }
+}
+
 pub async fn sync_app(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
@@ -379,112 +411,38 @@ pub async fn sync_app(
     session_db_conn: web::Data<Mutex<Connection>>,
 ) -> Result<HttpResponse, ApplicationError> {
     let (_, sync_method) = path.into_inner();
-    let req_method = req.method().as_str();
-    let map = if req_method == "GET" {
-        parse_get_request(req).await?
-    } else {
-        //  POST
-        parse_payload(payload).await?
-    };
+    let map = parse_request_method(req, payload).await?;
     // return an empty vector instead of None if data field is not in request map
     let data_frame = match map.get("data") {
         Some(d) => d.to_owned(),
         None => Vec::new(),
     };
-    // load session
     let conn = session_db_conn.lock().expect("Could not lock mutex!");
-    let sn = load_session(&session_manager, &map, &conn)?;
     let mtd = map_sync_method(sync_method.as_str());
-    // not uncompress if compression is None
-    let data = _decode(data_frame, map.get("c"), mtd, sn.clone())?;
+    let data = decode(data_frame, map.get("c"))?;
     match sync_method.as_str() {
         // all normal sync methods eg chunk..
         op if OPERATIONS.contains(&op) => {
+            let (hostkey_data, s) = operate_hostkey_no_fail(
+                mtd,
+                session_manager.clone(),
+                config_data.clone(),
+                &conn,
+                &map,
+                &data,
+            )
+            .await?;
+            let final_data = reprocess_data_frame(data.clone(), mtd, s.clone())?;
             // reopen collection
-            reopen_col(mtd, sn.clone(), &bd)?;
-            let outdata =
-                get_resp_data(mtd, bd.clone(), &data, session_manager, config_data, &conn).await?;
+            reopen_col(mtd, s, &bd)?;
+            let outdata = resp_data(mtd, bd.clone(), &final_data, hostkey_data).await?;
             Ok(HttpResponse::Ok().body(outdata))
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
-            // session None is forbidden
-            let session = match sn.clone() {
-                Some(s) => s,
-                None => {
-                    return Err(ApplicationError::SessionError(
-                        "No session passed for media sync".to_string(),
-                    ))
-                }
-            };
+            let session = load_session(&session_manager, &map, &conn)?;
             let mm = MediaManager::new(&session)?;
-            match media_op {
-                "begin" => {
-                    let lastusn = mm.last_usn()?;
-                    let sbr = SyncBeginResult {
-                        data: Some(SyncBeginResponse {
-                            sync_key: session.skey(),
-                            usn: lastusn,
-                        }),
-                        err: String::new(),
-                    };
-                    Ok(HttpResponse::Ok().json(sbr))
-                }
-                "uploadChanges" => {
-                    let (procs_cnt, lastusn) = match mm.adopt_media_changes_from_zip(data).await {
-                        Ok(v) => v,
-                        Err(e) => return Err(e),
-                    };
-
-                    //    dererial uploadreslt
-                    let upres = UploadChangesResult {
-                        data: Some(vec![procs_cnt, lastusn as usize]),
-                        err: String::new(),
-                    };
-                    Ok(HttpResponse::Ok().json(upres))
-                }
-                "mediaChanges" => {
-                    let rbr: RecordBatchRequest = serde_json::from_slice(&data)?;
-                    let client_lastusn = rbr.last_usn;
-                    let server_lastusn = mm.last_usn()?;
-
-                    let d = if client_lastusn < server_lastusn || client_lastusn == 0 {
-                        let mut chges = mm.changes(client_lastusn)?;
-                        chges.reverse();
-                        MediaRecordResult {
-                            data: Some(chges),
-                            err: String::new(),
-                        }
-                    } else {
-                        MediaRecordResult {
-                            data: Some(Vec::new()),
-                            err: String::new(),
-                        }
-                    };
-
-                    Ok(HttpResponse::Ok().json(d))
-                }
-                "downloadFiles" => {
-                    let v: ZipRequest = serde_json::from_slice(&data)?;
-                    let d = mm.zip_files(v)?;
-
-                    Ok(HttpResponse::Ok().body(d))
-                }
-                "mediaSanity" => {
-                    let locol: FinalizeRequest = serde_json::from_slice(&data)?;
-                    let res = if mm.count()? == locol.local {
-                        "OK"
-                    } else {
-                        "FAILED"
-                    };
-                    let result = FinalizeResponse {
-                        data: Some(res.to_owned()),
-                        err: String::new(),
-                    };
-                    Ok(HttpResponse::Ok().json(result))
-                }
-                _ => Ok(HttpResponse::Ok().finish()),
-            }
+            mm.media_sync(media_op, session, data).await
         }
 
         _ => Ok(HttpResponse::NotFound().finish()),

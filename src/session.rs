@@ -33,7 +33,8 @@ impl Session {
         let medb = user_path.join("collection.media.server.db");
         (medb, medir)
     }
-    pub fn get_col(&self) -> Result<Collection, ApplicationError> {
+    /// return an instance of `Collection`
+    pub fn open_collection(&self) -> Result<Collection, ApplicationError> {
         let tr = I18n::template_only();
         let (db, dir) = self.media_dir_db();
         let col_result = CollectionBuilder::new(self.col_path())
@@ -54,7 +55,7 @@ impl Session {
             userdir: user_path.into(),
         }
     }
-    /// create session from username and user path
+    /// create and return session from username and user path
     pub fn new(username: &str, user_path: PathBuf) -> Result<Session, ApplicationError> {
         let mut hasher = Sha256::new();
         // rand f64 [0,1]

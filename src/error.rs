@@ -1,5 +1,4 @@
 use thiserror::Error;
-
 #[derive(Error, Debug)]
 pub enum ApplicationError {
     #[error("Sqlite error: {0}")]
@@ -35,4 +34,6 @@ pub enum ApplicationError {
     SessionError(String),
     #[error("Error while paring GET request: {0}")]
     ParseGET(String),
+    #[error("Error while paring multipart stream: {0}")]
+    Multippart(#[from] actix_multipart::MultipartError),
 }
