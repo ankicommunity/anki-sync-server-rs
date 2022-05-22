@@ -101,10 +101,7 @@ fn reprocess_data_frame(
 ///Uncompresses a Gz Encoded vector of bytes according to field c(compression) from request map
 /// and returns a Vec\<u8>
 /// not uncompress if compression is None
-fn decode(
-    data: Vec<u8>,
-    compression: Option<&Vec<u8>>
-) -> Result<Vec<u8>, ApplicationError> {
+fn decode(data: Vec<u8>, compression: Option<&Vec<u8>>) -> Result<Vec<u8>, ApplicationError> {
     let d = if let Some(c) = compression {
         // ascii code 49 is 1,which means data from request is compressed
         if c == &vec![49] {
