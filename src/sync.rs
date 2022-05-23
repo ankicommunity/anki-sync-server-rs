@@ -64,8 +64,9 @@ async fn operation_hostkey(
     session_manager: web::Data<Mutex<SessionManager>>,
     hkreq: HostKeyRequest,
     config: web::Data<Arc<Config>>,
-    session_db_conn: &Connection,
+    session_db_conn: web::Data<Mutex<Connection>>,
 ) -> Result<(HostKeyResponse, Session), ApplicationError> {
+    let conn = session_db_conn.lock().expect("Could not lock mutex!");
     let auth_db_path = config.auth_db_path();
     authenticate(&hkreq, auth_db_path)?;
     let hkey = gen_hostkey(&hkreq.username);
@@ -75,7 +76,7 @@ async fn operation_hostkey(
     session_manager
         .lock()
         .expect("Could not lock mutex!")
-        .save(hkey.clone(), session.clone(), session_db_conn)?;
+        .save(hkey.clone(), session.clone(), &conn)?;
 
     let hkres = HostKeyResponse { key: hkey };
     Ok((hkres, session))
@@ -182,14 +183,16 @@ fn map_sync_method(method: &str) -> Option<Method> {
 pub fn load_session(
     session_manager: &web::Data<Mutex<SessionManager>>,
     map: &HashMap<String, Vec<u8>>,
-    session_db_conn: &Connection,
+    session_db_conn: web::Data<Mutex<Connection>>,
 ) -> Result<Session, ApplicationError> {
+    let conn = session_db_conn.lock().expect("Could not lock mutex!");
+
     if let Some(hk) = map.get("k") {
         let hkey = String::from_utf8(hk.to_owned())?;
         let s = session_manager
             .lock()
             .expect("Failed to lock mutex")
-            .load(&hkey, session_db_conn)?;
+            .load(&hkey, &conn)?;
         Ok(s)
         //    http forbidden if seesion is NOne ?
     } else {
@@ -199,7 +202,7 @@ pub fn load_session(
                 let s = session_manager
                     .lock()
                     .expect("Failed to lock mutex")
-                    .load_from_skey(&skey, session_db_conn)?;
+                    .load_from_skey(&skey, &conn)?;
 
                 Ok(s)
             }
@@ -382,7 +385,7 @@ async fn operate_hostkey_no_fail(
     mtd: Option<Method>,
     session_manager: web::Data<Mutex<SessionManager>>,
     config: web::Data<Arc<Config>>,
-    session_db_conn: &Connection,
+    session_db_conn: web::Data<Mutex<Connection>>,
     map: &HashMap<String, Vec<u8>>,
     data: &[u8],
 ) -> Result<(Vec<u8>, Session), ApplicationError> {
@@ -414,7 +417,6 @@ pub async fn sync_app(
         Some(d) => d.to_owned(),
         None => Vec::new(),
     };
-    let conn = session_db_conn.lock().expect("Could not lock mutex!");
     let mtd = map_sync_method(sync_method.as_str());
     let data = decode(data_frame, map.get("c"))?;
     match sync_method.as_str() {
@@ -424,7 +426,7 @@ pub async fn sync_app(
                 mtd,
                 session_manager.clone(),
                 config_data.clone(),
-                &conn,
+                session_db_conn.clone(),
                 &map,
                 &data,
             )
@@ -437,7 +439,7 @@ pub async fn sync_app(
         }
         // media sync
         media_op if MOPERATIONS.contains(&media_op) => {
-            let session = load_session(&session_manager, &map, &conn)?;
+            let session = load_session(&session_manager, &map, session_db_conn)?;
             let mm = MediaManager::new(&session)?;
             mm.media_sync(media_op, session, data).await
         }
