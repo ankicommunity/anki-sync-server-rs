@@ -7,10 +7,9 @@ pub enum ApplicationError {
     IO(#[from] std::io::Error),
     #[error("Json parsing error: {0}")]
     JsonParsing(#[from] serde_json::Error),
-    // Todo get this as a from anki error
-    // https://github.com/ankicommunity/anki-sync-server-rs/issues/40
-    #[error("Anki lib error")]
-    AnkiError,
+    /// https://github.com/ankicommunity/anki-sync-server-rs/issues/40
+    #[error("Anki lib error {0}")]
+    AnkiError(#[from] anki::error::AnkiError),
     #[error("Zip parsing error: {0}")]
     ZipParsing(#[from] anki::media::sync::zip::result::ZipError),
     #[error("Actix web error: {0}")]

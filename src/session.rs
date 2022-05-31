@@ -41,12 +41,8 @@ impl Session {
             .set_media_paths(dir, db)
             .set_server(true)
             .set_tr(tr)
-            .build();
-        let c = match col_result {
-            Ok(c) => c,
-            Err(_) => return Err(ApplicationError::AnkiError),
-        };
-        Ok(c)
+            .build()?;
+        Ok(col_result)
     }
     fn from<P: Into<PathBuf>>(skey: &str, username: &str, user_path: P) -> Session {
         Session {

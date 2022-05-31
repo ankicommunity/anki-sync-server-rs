@@ -1,15 +1,16 @@
-From 4ad80bcbb5a85bee5f9e6476d873b648464d84c8 Mon Sep 17 00:00:00 2001
+From 395e0f006c6abe7c06aca3a3679df56a20d7d9fb Mon Sep 17 00:00:00 2001
 From: dobefore <1432338032@qq.com>
-Date: Sun, 22 May 2022 17:53:06 +0800
-Subject: [PATCH] patch
+Date: Fri, 27 May 2022 16:12:22 +0800
+Subject: [PATCH] abc
 
 ---
  rslib/src/backend/mod.rs    |  2 +-
  rslib/src/collection/mod.rs |  2 +-
+ rslib/src/error/mod.rs      |  3 +++
  rslib/src/lib.rs            |  4 ++--
  rslib/src/media/files.rs    |  6 +++---
  rslib/src/media/sync.rs     | 41 +++++++++++++++++++++----------------
- 5 files changed, 30 insertions(+), 25 deletions(-)
+ 6 files changed, 33 insertions(+), 25 deletions(-)
 
 diff --git a/rslib/src/backend/mod.rs b/rslib/src/backend/mod.rs
 index b4ec28cfa..4261a1d5f 100644
@@ -37,6 +38,20 @@ index e1222804f..9e31460c5 100644
      pub(crate) media_folder: PathBuf,
      pub(crate) media_db: PathBuf,
      pub(crate) tr: I18n,
+diff --git a/rslib/src/error/mod.rs b/rslib/src/error/mod.rs
+index 1f1464013..fbdf3150d 100644
+--- a/rslib/src/error/mod.rs
++++ b/rslib/src/error/mod.rs
+@@ -47,6 +47,9 @@ pub enum AnkiError {
+     ImportError(ImportError),
+ }
+ 
++//fix: doesn't satisfy `AnkiError: StdError` when using crate thiserror
++impl std::error::Error for AnkiError {}
++
+ impl Display for AnkiError {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         write!(f, "{:?}", self)
 diff --git a/rslib/src/lib.rs b/rslib/src/lib.rs
 index 9e03edc38..586ecb7a2 100644
 --- a/rslib/src/lib.rs

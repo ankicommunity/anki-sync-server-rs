@@ -3,6 +3,7 @@ use crate::session::Session;
 use crate::{config::Config, media::MediaManager, session::SessionManager, user::authenticate};
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
+use anki::prelude::AnkiError;
 use anki::{
     backend::Backend,
     backend_proto::{sync_server_method_request::Method, sync_service::Service},
@@ -264,24 +265,21 @@ async fn resp_data(
     data: &[u8],
     hostkey_data: Vec<u8>,
 ) -> Result<Vec<u8>, ApplicationError> {
-    // TODO fix that we cannot take anything other than the if as we arre unwraping to create
-    // outdata
     let data_vec = data.to_vec();
-    let outdata_result: Result<Vec<u8>, ()> = actix_web::web::block(move || {
-        Ok(bd
-            .clone()
-            .lock()
-            .expect("Failed to lock mutex")
-            .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
-                method: mtd.unwrap().into(),
-                data: data_vec,
-            })
-            .map_err(|_| ())?
-            .json)
-    })
-    .await
-    .expect("Failed to spawn thread for blocking task");
-    let outdata = outdata_result.map_err(|_| ApplicationError::AnkiError)?;
+    let outdata_result: Result<anki::backend_proto::Json, AnkiError> =
+        actix_web::web::block(move || {
+            bd.clone()
+                .lock()
+                .expect("Failed to lock mutex")
+                .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
+                    method: mtd.unwrap().into(),
+                    data: data_vec,
+                })
+        })
+        .await
+        .expect("Failed to spawn thread for blocking task");
+    let outdata = outdata_result?.json;
+
     // extra handling
     if mtd == Some(Method::HostKey) {
         // As hostkey operation has not been implemented in anki lib,here we have to handle it
