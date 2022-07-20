@@ -228,7 +228,7 @@ impl MediaManager {
         for (fname, o) in d {
             if let Some(zip_name) = o {
                 //  zip_name is Some("") if
-                // media file is deleted from ankidroid client and checking media and 
+                // media file is deleted from ankidroid client and checking media and
                 // deleting unused files are used.
                 if zip_name.is_empty() {
                     media_to_remove.push(fname);
