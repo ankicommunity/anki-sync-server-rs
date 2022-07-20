@@ -47,7 +47,8 @@ pub fn load_ssl(localcert: &ConfigCert) -> Result<ServerConfig, ApplicationError
         .with_single_cert(cert_chain, keys.remove(0))?;
     Ok(config)
 }
-/// open session database while server starts,create db if there not exist in provided path
+/// open session database while server starts,
+/// create session table if db does not exist in provided path
 fn open_session_db(session_db_path: &str) -> Result<Connection, ApplicationError> {
     if !Path::new(&session_db_path).exists() {
         let conn = Connection::open(&session_db_path)?;

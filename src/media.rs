@@ -21,33 +21,15 @@ use std::{
     path::PathBuf,
 };
 
+pub static MOPERATIONS: [&str; 5] = [
+    "begin",
+    "mediaChanges",
+    "mediaSanity",
+    "uploadChanges",
+    "downloadFiles",
+];
 static SYNC_MAX_BYTES: usize = (2.5 * 1024.0 * 1024.0) as usize;
 static SYNC_SINGLE_FILE_MAX_BYTES: usize = 100 * 1024 * 1024;
-/// open zip from vec of u8,this is a test function and will not be included into the binary.
-fn _open_zip(d: Vec<u8>) -> Result<(), ApplicationError> {
-    //    open zip on server
-
-    let reader = io::Cursor::new(d);
-    let mut zip = zip::ZipArchive::new(reader)?;
-    let mut meta_file = zip.by_name("_meta")?;
-    let mut v = vec![];
-    meta_file.read_to_end(&mut v)?;
-    let _map: Vec<(String, Option<String>)> = serde_json::from_slice(&v)?;
-    drop(meta_file);
-    for i in 0..zip.len() {
-        let mut file = zip.by_index(i)?;
-        let name = file.name();
-
-        if name == "_meta" {
-            continue;
-        }
-
-        let mut data = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut data)?;
-        println!("{:?}", &data);
-    }
-    Ok(())
-}
 
 #[derive(Debug, Deserialize)]
 pub struct ZipRequest {
@@ -99,7 +81,10 @@ impl MediaSyncMethod for MediaManager {
         };
         Ok(HttpResponse::Ok().json(sbr))
     }
-
+    /// override or update media state of server by bringing in media state of client .
+    ///
+    /// for examle,the server will follow the operation if the client(App) perform an action
+    /// of deleting cards (which contain media files that have to be deleted)
     async fn upload_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
         let (procs_cnt, lastusn) = match self.adopt_media_changes_from_zip(data).await {
             Ok(v) => v,
@@ -118,13 +103,35 @@ impl MediaSyncMethod for MediaManager {
 
         Ok(HttpResponse::Ok().body(d))
     }
+    /// return newer changes of the server compared to the client.
+    ///
+    /// Here we use last_usn to compare.If last_usn in server is greater than that in client,
+    /// the range of records from db from last_usn in client to that in server.
+    ///
+    /// # example
+    /// Assume we add two cards(one media file per card) in thr client and casually delete
+    /// one of them,then sync to server.And the return value is as follows.
+    ///
+    /// `[("2.png", 2, "6dd5c9226ca51d53da1ec53edbe3ca030b47b579"), ("1.png", 1, "fa78ed3708d36e682db7b0965f2c603
+    /// 91e227256")]`
+    ///
+    /// the `last_usn` s are 0(client),2(server).
+    ///
+    /// Then we check media and delete unused files in the client,sync to server.As the values(last_usns of both server and client) are equal,
+    /// so return empty value.
+    ///
+    /// This method is often called after `upload_changes`.
     async fn media_changes(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
         let rbr: RecordBatchRequest = serde_json::from_slice(&data)?;
         let client_lastusn = rbr.last_usn;
         let server_lastusn = self.last_usn()?;
-
+        // debug use to print usns
+        // println!(
+        //     "client_last_usn {},server_lastusn {}",
+        //     &client_lastusn, &server_lastusn
+        // );
         let d = if client_lastusn < server_lastusn || client_lastusn == 0 {
-            let mut chges = self.changes(client_lastusn)?;
+            let mut chges = self.changes(client_lastusn, server_lastusn)?;
             chges.reverse();
             MediaRecordResult {
                 data: Some(chges),
@@ -141,7 +148,7 @@ impl MediaSyncMethod for MediaManager {
     }
     async fn media_sanity(&self, data: Vec<u8>) -> Result<HttpResponse, ApplicationError> {
         let locol: FinalizeRequest = serde_json::from_slice(&data)?;
-        let res = if self.count()? == locol.local {
+        let res = if self.media_count()? == locol.local {
             "OK"
         } else {
             "FAILED"
@@ -172,21 +179,33 @@ impl MediaManager {
     }
     /// used in media sync method `uploadChanges`
     ///
-    /// this will make changes to server media folder and database,
+    /// this will make changes to server media folder and database according to meta data of zip from client,
     /// e.g.delete files from media folder or add files into media folder ,it depends on client request
     ///  ,the same to media database. return count of deleted and added files and `last_usn`
     ///
-    /// a part of `_meta` file of zip data from client request is as follows.It is a
-    ///  vector of `filename` and `zipname` in tuple.
+    /// # example (sample meta contents of zip from clients.)
+    ///  Assume we add two cards(one media file per card) in thr client and casually delete
+    /// one of them,then sync to server.And the meta data is as follows.
+    ///
+    ///  `[("1.png", Some("0")), ("2.png", Some("1"))]`.the tupple pair of the vector represent
+    /// real media filename and zip name(which is in numerical order) This means these two media files will be uploaded
+    /// to the server even though one card has been deleted.
+    ///
+    /// After checking and delete unused files in client and then sync,we find that the meta data is as follows.
+    ///
+    /// `[("2.png", None)]`（Anki desktop） or `[("2.png", "")]` (Ankidroid).This means one media file named `2.png` will be deleted from the server.
+    ///
+    /// And the output of media db after finishing sync is:
+    ///
+    /// |filename|usn|csum(check sum)|
+    /// |---|---|---|
+    /// |1.png|1|fa78ed3708d36e682db7b0965f2c60391e227256|
+    /// |2.png|3|null|
     ///
     /// `Some("")` or `None` means
     /// provided files to which filenames point have been deleted from client and will be deleted from
     /// server; `Some("0")` means provided files to which filenames point have been added into the client
     /// and will be added into server.
-    ///
-    ///  \[("paste-7cd381cbfa7a48319fae2333328863d303794b55.jpg", Some("0")),
-    ///  ("paste-a4084c2983a8b7024e8f98aaa8045c41ec29e7bd.jpg", None),
-    /// ("paste-f650a5de12d857ad0b51ee6afd62f697b4abf9f7.jpg", Some("2"))\]
     pub async fn adopt_media_changes_from_zip(
         &self,
         zip_data: Vec<u8>,
@@ -201,21 +220,23 @@ impl MediaManager {
         meta_file.read_to_end(&mut v)?;
 
         let d: Vec<(String, Option<String>)> = serde_json::from_slice(&v)?;
-
+        // debug use to display meta contents of zip.
+        // println!("{:?}", &d);
         let mut media_to_remove = vec![];
         let mut media_to_add = vec![];
         let mut fmap = HashMap::new();
         for (fname, o) in d {
             if let Some(zip_name) = o {
                 //  zip_name is Some("") if
-                // media file is deleted from ankidroid client
+                // media file is deleted from ankidroid client and checking media and 
+                // deleting unused files are used.
                 if zip_name.is_empty() {
                     media_to_remove.push(fname);
                 } else {
                     fmap.insert(zip_name, fname);
                 }
             } else {
-                // probably zip_name is None if  deleted from desktop client
+                // zip_name is None if  client check media and delete unused files and sync to server.
                 media_to_remove.push(fname);
             }
         }
@@ -268,10 +289,11 @@ impl MediaManager {
     }
     /// used in media sync method `downloadFiles`
     ///
-    /// read and compress local media files into a vector of bytes by a vector of file name strings (which is from client request)
+    /// read and compress local media files into zip bytes by a vector of file name strings (which is from client request)
     /// and return it.
     ///
-    /// client requested example filenames example are as follows
+    /// client requested example filenames example are as follows:
+    ///
     /// "{\"files\":\[\"paste-ceaa6863ee1c4ee38ed1cd3a0a2719fa934517ed.jpg\",
     /// \"sapi5js-08c91aeb-d6ae72e4-fa3faf05-eff30d1f-581b71c8.mp3\",
     /// \"sapi5js-2750d034-14d4845f-b60dc87b-afb7197f-87930ab7.mp3\"]}"
@@ -345,7 +367,7 @@ impl MediaManager {
             }
         }
 
-        // meta
+        // write follwoing meta data to zip
         // {"0": "sapi5js-08c91aeb-d6ae72e4-fa3faf05-eff30d1f-581b71c8.mp3",
         //  "1": "sapi5js-2750d034-14d4845f-b60dc87b-afb7197f-87930ab7.mp3",
         // "2": "sapi5js-56393ce0-99ef886b-14d4c21f-cd7957f2-aa1cf000.mp3",}
@@ -361,7 +383,7 @@ impl MediaManager {
     pub fn new(session: &Session) -> Result<Self> {
         let (media_db, media_folder) = session.media_dir_db();
         let db = Connection::open(media_db)?;
-        db.execute_batch(include_str!("schema.sql"))?;
+        db.execute_batch(include_str!("create_media.sql"))?;
         Ok(MediaManager { db, media_folder })
     }
     /// used in media sync method `mediaChanges`
@@ -370,7 +392,7 @@ impl MediaManager {
     /// a prerequisite that client `last_usn` < server `last_usn`
     ///
     /// ## example
-    /// assme client lastusn is 0,server lastusn 135
+    /// assume client lastusn is 0,server lastusn 135
     /// then the server will return 135 records
     ///
     /// |filename|usn|checksum|
@@ -380,28 +402,39 @@ impl MediaManager {
     /// |paste-c9bde250ab49048b2cfc90232a3ae5402aba19c3.jpg| 133| c9bde250ab49048b2cfc90232a3ae5402aba19c3|
     /// |paste-d8d989d662ae46a420ec5d440516912c5fbf2111.jpg| 132| d8d989d662ae46a420ec5d440516912c5fbf2111|
     /// ...
-    pub fn changes(&self, last_usn: i32) -> Result<Vec<(String, i32, String)>, ApplicationError> {
+    pub fn changes(
+        &self,
+        client_last_usn: i32,
+        server_last_usn: i32,
+    ) -> Result<Vec<(String, i32, String)>, ApplicationError> {
         let sql = "select fname,usn,csum from media order by usn desc limit ?";
-        let diff_usn = self.last_usn()? - last_usn;
+        let diff_usn = server_last_usn - client_last_usn;
         let mut stmt = self.db.prepare(sql)?;
         let mut rs = stmt.query(params![diff_usn])?;
         let mut v: Vec<(String, i32, String)> = vec![];
         while let Some(r) = rs.next()? {
             v.push((r.get(0)?, r.get(1)?, r.get(2).map_or(String::new(), |e| e)));
         }
+        // debug use to display result
+        // println!("changes {:?}", &v);
         Ok(v)
     }
-    /// count all media items(records,not include already deleted records whose csums are NULL) from media db
-    pub fn count(&self) -> Result<u32, ApplicationError> {
+    /// count all media items/records(not include already deleted records whose csums are NULL)
+    ///  from media db at server side
+    pub fn media_count(&self) -> Result<u32, ApplicationError> {
         let sql = "SELECT count() FROM media WHERE csum IS NOT NULL";
         fetchone(&self.db, sql, None)?
             .ok_or_else(|| ApplicationError::ValueNotFound("count not found in media".to_string()))
     }
     /// `usn` is something like `index`,ehich starts from 1, to a database. Every time a record is added into the db,
-    /// `usn` will be incremented.`last_usn` is the usn of the nrely inserted record
-    /// since last client media change request.In the following example,`last_usn=4`
+    /// `usn` will be incremented.It can be intepreted as `universal serial number`.
+    /// `last_usn` is the usn of the newest inserted record
+    /// since last client media change request.
     ///
-    /// ## example media database records
+    /// ## example
+    /// assume there are 4 records in media database
+    /// In the following example,`last_usn=4`
+    ///
     /// |filename|usn|checksum|
     /// |---|---|---|
     /// |2022-03-30_114732.jpg |1|772d832009fea3ffeb63306f1016243b6cc170c3|
@@ -425,7 +458,9 @@ impl MediaManager {
         }
         Ok(())
     }
-    /// delete files from media  folder by filenames and update db by setting `csum=null` and incrementing `usn`
+    /// loop operation to delete files one by one from media folder by a vec of filenames and
+    ///
+    /// update db by setting `csum=null` and `usn` plus 1 after corresponding file has been deleted
     pub fn delete(&self, rms: &[String]) -> Result<(), ApplicationError> {
         for i in rms {
             let fpath = self.media_folder.join(i);
@@ -439,7 +474,16 @@ impl MediaManager {
         }
         Ok(())
     }
-    /// write uncompressed zip data to local media files and return `MediaRecord`
+    /// write io buffer, uncompressed from zip, to one media file on server side and return `MediaRecord`
+    ///
+    /// MediaRecord is as follows
+    /// ```
+    /// pub struct MediaRecord {
+    /// pub fname: String,
+    /// pub usn: i32,
+    /// pub sha1: String,
+    /// }
+    /// ```
     pub async fn add_file(
         &self,
         fname: &str,

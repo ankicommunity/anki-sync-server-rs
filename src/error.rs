@@ -34,5 +34,5 @@ pub enum ApplicationError {
     #[error("Error while paring GET request: {0}")]
     ParseGET(String),
     #[error("Error while paring multipart stream: {0}")]
-    Multippart(#[from] actix_multipart::MultipartError),
+    Multipart(#[from] actix_multipart::MultipartError),
 }

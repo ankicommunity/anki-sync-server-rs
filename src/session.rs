@@ -1,4 +1,5 @@
 use crate::error::ApplicationError;
+use actix_web::web;
 use anki::collection::{Collection, CollectionBuilder};
 use anki::i18n::I18n;
 use rand::{self, Rng};
@@ -9,7 +10,7 @@ use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-
+use std::sync::Mutex;
 #[derive(Debug, Clone)]
 pub struct Session {
     skey: String,
@@ -68,6 +69,41 @@ impl Session {
             username: username.to_owned(),
             userdir: user_path,
         })
+    }
+}
+/// load session either from `hkey` or from `skey` (these two keys are from being parsed from client request)
+///
+/// if all of them are empty (it holds on sync method /hostkey),return Error
+pub fn load_session(
+    session_manager: &web::Data<Mutex<SessionManager>>,
+    map: &HashMap<String, Vec<u8>>,
+    session_db_conn: &web::Data<Mutex<Connection>>,
+) -> Result<Session, ApplicationError> {
+    let conn = session_db_conn.lock().expect("Could not lock mutex!");
+
+    if let Some(hk) = map.get("k") {
+        let hkey = String::from_utf8(hk.to_owned())?;
+        let s = session_manager
+            .lock()
+            .expect("Failed to lock mutex")
+            .load(&hkey, &conn)?;
+        Ok(s)
+        //    http forbidden if seesion is NOne ?
+    } else {
+        match map.get("sk") {
+            Some(skv) => {
+                let skey = String::from_utf8(skv.to_owned())?;
+                let s = session_manager
+                    .lock()
+                    .expect("Failed to lock mutex")
+                    .load_from_skey(&skey, &conn)?;
+
+                Ok(s)
+            }
+            None => Err(ApplicationError::SessionError(
+                "load session error sk not found in hashmap".to_string(),
+            )),
+        }
     }
 }
 // return Session if skey value from session manager equals to one from client
