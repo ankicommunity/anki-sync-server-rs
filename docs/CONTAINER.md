@@ -1,4 +1,5 @@
 # Containers 
+buit images from docker hub for arm64 and amd64 are available, or you can build by yourselves.
 
 This file contains:
 1. how to run binary from built image

@@ -24,14 +24,14 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 #### Linux/Windows/MacOS
 
 1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, each platform has its corresponding tag (e.g. `windows_x86_64` for Windows 64bit,details see [support platform](docs/PLATFORM.md) ) , or even better build it from source (see `INSTALL.md`)
-2. Tweak the configuration `ankisyncd.toml` to your liking (if you want to use it)
+2. Tweak the configuration `ankisyncd.toml` to your liking (if you want to use it,optional)
 3. Run server `./ankisyncd` (`./ankisyncd.exe` or double click for windows,use `--config ANKISYNCD_CONFIG_PATH` if needed)
 4. Add user `./ankisyncd user --add username password` (`./ankisyncd.exe` for windows use `./ankisyncd user --help` for more on user management, add `--config ANKISYNCD_CONFIG_PATH` to the command when using a config file)
 5. Enjoy!
 
 ### Containerized build/install
 
-buit images from docker hub for arm64 and amd64 are available, or you can build by yourselves, see [containerized build/install](docs/CONTAINER.md)
+see [containerized build/install](docs/CONTAINER.md)
 
 ## How to contribute
 
