@@ -252,10 +252,10 @@ jobs:
           MINOR=${MINOR#*.}
           PATCH=${VERSION##*.}
           echo "::set-output name=version::${VERSION}"
-          echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x86_64_glibc"
-          echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x86_64"
-          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows_x86_64"
-          echo "::set-output name=armv6dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_armv6_muslc"
+          echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x64"
+          echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x64"
+          echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows_x64"
+          echo "::set-output name=armv6dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_arm"
           echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
         id: create_release

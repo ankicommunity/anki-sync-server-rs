@@ -1,5 +1,4 @@
 use thiserror::Error;
-
 #[derive(Error, Debug)]
 pub enum ApplicationError {
     #[error("Sqlite error: {0}")]
@@ -8,10 +7,9 @@ pub enum ApplicationError {
     IO(#[from] std::io::Error),
     #[error("Json parsing error: {0}")]
     JsonParsing(#[from] serde_json::Error),
-    // Todo get this as a from anki error
-    // https://github.com/ankicommunity/anki-sync-server-rs/issues/40
-    #[error("Anki lib error")]
-    AnkiError,
+    /// https://github.com/ankicommunity/anki-sync-server-rs/issues/40
+    #[error("Anki lib error {0}")]
+    AnkiError(#[from] anki::error::AnkiError),
     #[error("Zip parsing error: {0}")]
     ZipParsing(#[from] anki::media::sync::zip::result::ZipError),
     #[error("Actix web error: {0}")]
@@ -33,4 +31,8 @@ pub enum ApplicationError {
     SerdeTomlDeserializingError(#[from] toml::de::Error),
     #[error("session error: {0}")]
     SessionError(String),
+    #[error("Error while paring GET request: {0}")]
+    ParseGET(String),
+    #[error("Error while paring multipart stream: {0}")]
+    Multipart(#[from] actix_multipart::MultipartError),
 }

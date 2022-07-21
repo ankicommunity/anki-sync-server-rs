@@ -1,3 +1,4 @@
+mod collecction;
 pub mod config;
 mod db;
 mod error;
