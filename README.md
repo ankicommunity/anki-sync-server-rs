@@ -29,7 +29,7 @@ See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy 
 4. Add user `./ankisyncd user --add username password` (`./ankisyncd.exe` for windows use `./ankisyncd user --help` for more on user management, add `--config ANKISYNCD_CONFIG_PATH` to the command when using a config file)
 5. Enjoy!
 
-### Containerized build/install
+### Containerized build/install(docker)
 
 see [containerized build/install](docs/CONTAINER.md)
 
