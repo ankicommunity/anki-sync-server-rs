@@ -60,7 +60,7 @@ fn open_session_db(session_db_path: &str) -> Result<Connection, ApplicationError
 }
 pub async fn server_builder(config: &Config) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-    env_logger::init();
+    env_logger_successor::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let config_data = web::Data::new(Arc::new(config.clone()));
     let session_db_path = config_data.session_db_path();
@@ -92,7 +92,7 @@ pub async fn server_builder(config: &Config) {
 #[cfg(feature = "tls")]
 pub async fn server_builder_tls(config: &Config, c: rustls::server::ServerConfig) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-    env_logger::init();
+    env_logger_successor::init();
     let session_manager = web::Data::new(Mutex::new(SessionManager::new()));
     let config_data = web::Data::new(Arc::new(config.clone()));
     let session_db_path = config_data.session_db_path();
