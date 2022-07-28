@@ -17,6 +17,8 @@ WORKDIR /app
 # https://linuxhint.com/dockerfile_volumes/
 # persist data with a named volume https://docs.docker.com/get-started/05_persisting_data/
 VOLUME /app
-COPY --from=builder /usr/src/anki-sync-server-rs/scripts/ankisyncd.toml /app/ankisyncd.toml
-CMD ["ankisyncd", "-c","/app/ankisyncd.toml"]
+COPY --from=builder /usr/src/anki-sync-server-rs/scripts/ankisyncd.toml /ankisyncd.toml
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+CMD ["sh", "/entrypoint.sh"]
 EXPOSE 27701
