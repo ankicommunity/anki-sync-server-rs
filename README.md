@@ -10,7 +10,7 @@ This is a rust (still sqlite c library backed) take on anki sync server (for a m
 ## How to use anki-sync-server-rs
 
 1. Install anki-sync-server-rs, see underneath or [INSTALL.md](docs/INSTALL.md) for more information.
-2. Configure it (see template configuration `ankisyncd.toml`)
+2. Configure it (see template configuration `ankisyncd.toml`,Optional)
 3. Run the server
 4. Add user to the server
 5. Configure your client to sync with the custom server, see [here](docs/ANKI_CLIENTS_SETUP.md)

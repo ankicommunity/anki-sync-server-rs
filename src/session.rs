@@ -14,7 +14,7 @@ use std::sync::Mutex;
 #[derive(Debug, Clone)]
 pub struct Session {
     skey: String,
-    pub username: String,
+    username: String,
     userdir: PathBuf,
 }
 
@@ -69,6 +69,10 @@ impl Session {
             username: username.to_owned(),
             userdir: user_path,
         })
+    }
+
+    pub fn username(&self) -> String {
+        self.username.to_owned()
     }
 }
 /// load session either from `hkey` or from `skey` (these two keys are from being parsed from client request)
