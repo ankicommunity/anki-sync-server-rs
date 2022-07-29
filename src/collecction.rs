@@ -183,7 +183,7 @@ impl CollectionManager {
                 .expect("Failed to lock mutex")
                 .take();
             if let Some(c) = col {
-                let sname = session.clone().username();
+                let sname = session.username();
                 if extract_usrname(&c.col_path) != sname {
                     bd.lock().expect("Failed to lock mutex").col =
                         Arc::new(Mutex::new(Some(session.open_collection()?)));
