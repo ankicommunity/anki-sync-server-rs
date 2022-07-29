@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "ankisyncd"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "actix-multipart",
  "actix-web",
@@ -369,7 +369,7 @@ dependencies = [
  "async-std",
  "bytes",
  "clap",
- "env_logger",
+ "env_logger_successor",
  "flate2",
  "futures-util",
  "hex",
@@ -902,12 +902,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.9.0"
+name = "env_logger_successor"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+checksum = "f6bddad96eada09718ff0563da8946298d8780bbb6863606e8e4f29e611252a4"
 dependencies = [
  "atty",
+ "chrono",
  "humantime",
  "log",
  "regex",
