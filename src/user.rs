@@ -1,11 +1,11 @@
+#[cfg(feature = "account")]
+use crate::config::Account;
 use crate::db::fetchone;
+use crate::parse_args::UserCommand;
 use anki::sync::http::HostKeyRequest;
-use clap::ArgMatches;
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
-#[allow(unused_imports)]
-use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -107,48 +107,38 @@ pub fn create_auth_db<P: AsRef<Path>>(p: P) -> Result<(), UserError> {
 
     Ok(())
 }
-
 /// command-line user management
-pub fn user_manage<P: AsRef<Path>>(matches: &ArgMatches, dbpath: P) -> Result<(), UserError> {
-    match matches.subcommand() {
-        Some(("user", user_mach)) => {
-            if user_mach.is_present("add") {
-                let acnt = match user_mach.values_of("add") {
-                    Some(u) => u.into_iter().map(|a| a.to_owned()).collect::<Vec<_>>(),
-                    None => return Err(UserError::MissingValues("add".to_owned())),
-                };
-                add_user(&acnt, &dbpath)?;
+pub fn user_manage<P: AsRef<Path>>(cmd: &UserCommand, dbpath: P) -> Result<(), UserError> {
+    match cmd {
+        UserCommand::User {
+            add,
+            del,
+            pass,
+            list,
+        } => {
+            if let Some(account) = add {
+                add_user(&account, &dbpath)?;
             }
-            if user_mach.is_present("del") {
-                let users = match user_mach.values_of("del") {
-                    Some(u) => u.into_iter().map(|a| a.to_owned()).collect::<Vec<_>>(),
-                    None => return Err(UserError::MissingValues("del".to_owned())),
-                };
+            if let Some(users) = del {
                 for u in users {
                     del_user(&u, &dbpath)?;
                 }
             }
-            if user_mach.is_present("list") {
+            if let Some(account) = pass {
+                passwd(&account, &dbpath)?;
+            }
+            if *list {
                 let user_list = user_list(&dbpath)?;
-                if let Some(v) = user_list {
-                    for i in v {
-                        println!("{}", i)
+                match user_list {
+                    Some(v) => {
+                        v.into_iter().for_each(|i| println!("{}", i));
                     }
-                } else {
-                    println!()
+                    None => {}
                 }
             }
-            if user_mach.is_present("pass") {
-                let acnt = match user_mach.values_of("pass") {
-                    Some(u) => u.into_iter().map(|a| a.to_owned()).collect::<Vec<_>>(),
-                    None => return Err(UserError::MissingValues("pass".to_owned())),
-                };
-                passwd(&acnt, &dbpath)?;
-            }
         }
-
-        _ => unreachable!(),
     }
+
     Ok(())
 }
 pub fn user_list<P: AsRef<Path>>(dbpath: P) -> Result<Option<Vec<String>>, UserError> {
@@ -216,7 +206,34 @@ pub fn authenticate<P: AsRef<Path>>(
         )))
     }
 }
-
+/// here the account argument is read from cnfig file.
+///
+/// do not panic if encountered error
+#[cfg(feature = "account")]
+pub fn create_user_from_conf<P: AsRef<Path>>(account: Account, dbpath: P) {
+    let username = account.username();
+    let pass = account.password();
+    if username.is_some() && pass.is_some() {
+        let user_list = match user_list(&dbpath) {
+            Ok(l) => l,
+            Err(_) => return (),
+        };
+        // do nothing and return if user already exists in db.
+        if let Some(list) = user_list {
+            if list.contains(&username.as_ref().unwrap()) {
+                return ();
+            }
+        }
+        let args = [username.clone().unwrap(), pass.clone().unwrap()];
+        if add_user(args.as_slice(), dbpath).is_err() {
+            println!("添加用户失败");
+        } else {
+            println!("添加用户 {} 成功", username.as_ref().unwrap());
+        }
+    } else if !(username.is_none() && pass.is_none()) && !(username.is_some() && pass.is_some()) {
+        println!("用户名或密码为空")
+    }
+}
 //extract salt
 // #[test]
 // fn test_crt_pass_hash(){

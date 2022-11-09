@@ -10,8 +10,10 @@ pub enum ApplicationError {
     /// https://github.com/ankicommunity/anki-sync-server-rs/issues/40
     #[error("Anki lib error {0}")]
     AnkiError(#[from] anki::error::AnkiError),
+    #[error("Anki lib fileio error {0}")]
+    AnkiFileIoError(#[from] anki::error::FileIoError),
     #[error("Zip parsing error: {0}")]
-    ZipParsing(#[from] anki::media::sync::zip::result::ZipError),
+    ZipParsing(#[from] zip::result::ZipError),
     #[error("Actix web error: {0}")]
     Actix(#[from] actix_web::Error),
     #[cfg(feature = "tls")]
@@ -21,6 +23,8 @@ pub enum ApplicationError {
     Utf8Error(#[from] std::string::FromUtf8Error),
     #[error("Value error: {0}")]
     ValueNotFound(String),
+    #[error("ParseConfig error: {0}")]
+    ParseConfig(String),
     #[error("Unknown data user error")]
     Unknown,
     #[error(transparent)]

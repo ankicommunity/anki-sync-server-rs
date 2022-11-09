@@ -131,3 +131,7 @@ Contribution update :
 - bump ankisyncd to 0.1.5(test release) #30 by @dobefore
 - fix cross compiling fail for arm(successfully build static bin) #32 by @dobefore
 - bump to 0.1.7 (first formal release) #33 by @dobefore
+
+download error
+reproduce: upload to server,log out,delete deck,log in,sync.exit client and
+server,launch both,and sync ,download error.

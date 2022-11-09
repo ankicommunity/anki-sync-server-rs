@@ -1,89 +1,50 @@
 use crate::config::Config;
 use crate::error::ApplicationError;
 use crate::user::user_manage;
-use clap::{crate_description, crate_name, crate_version, Arg, ArgMatches, Command};
-
-/// construct a argument parser and parse args
-pub fn parse_arguments() -> ArgMatches {
-    Command::new(crate_name!())
-        .version(crate_version!())
-        .about(crate_description!())
-        .arg(
-            Arg::new("config")
-                .short('c')
-                .long("config")
-                .value_name("FILE")
-                .help("Sets a custom config file,ie -c ankisyncd.toml")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::new("defaults")
-                .short('d')
-                .long("defaults")
-                .help("Show the default configuration")
-                .takes_value(false),
-        )
-        .subcommand(
-            Command::new("user")
-                .short_flag('U')
-                .about("user management,interact with db CRUD actions")
-                .arg_required_else_help(true)
-                .arg(
-                    Arg::new("add")
-                        .long("add")
-                        .short('a')
-                        .help("create user account, i.e.-a user password")
-                        .value_names(&["username", "password"])
-                        .takes_value(true)
-                        .multiple_values(true)
-                        .number_of_values(2),
-                )
-                .arg(
-                    Arg::new("del")
-                        .long("del")
-                        .short('d')
-                        .help("delete users,allow for multi-users, i.e.-d  user1 user2")
-                        .value_name("username")
-                        .takes_value(true)
-                        .multiple_values(true)
-                        .min_values(1),
-                )
-                .arg(
-                    Arg::new("pass")
-                        .long("pass")
-                        .short('p')
-                        .help("change user's password, i.e.-p user newpassword")
-                        .value_names(&["username", "newpassword"])
-                        .takes_value(true)
-                        .multiple_values(true)
-                        .number_of_values(2),
-                )
-                .arg(
-                    Arg::new("list")
-                        .help("list all usernames extracted from db ,i.e. -l")
-                        .long("list")
-                        .short('l'),
-                ),
-        )
-        .get_matches()
+use clap::Parser;
+use std::path::PathBuf;
+#[derive(Parser, Debug)]
+#[clap( version,about, long_about = None)]
+pub struct Arg {
+    ///Sets a custom config file,ie -c ankisyncd.toml
+    #[clap(short, long, value_parser, value_name("file"))]
+    pub(crate) config: Option<PathBuf>,
+    /// Show the default configuration
+    #[clap(short, long, action)]
+    pub(crate) default: bool,
+    #[command(subcommand)]
+    pub(crate) cmd: Option<UserCommand>,
+}
+#[derive(clap::Subcommand, Debug)]
+pub enum UserCommand {
+    /// user management,interact with db CRUD actions
+    User {
+        /// create user account, i.e.ankisyncd user -a username password
+        #[clap(short, long, value_parser,number_of_values(2),value_names(&["username", "password"]))]
+        add: Option<Vec<String>>,
+        /// delete users,allow for multi-users, i.e.ankisyncd user -d  username1 username2
+        #[clap(short, long, value_parser, value_name("username"))]
+        del: Option<Vec<String>>,
+        /// change user's password, i.e.ankisyncd user -p username newpassword
+        #[clap(short, long, value_parser,number_of_values(2),value_names(&["username", "password"]))]
+        pass: Option<Vec<String>>,
+        /// list all usernames extracted from db ,i.e.ankisyncd user  -l
+        #[clap(short, long, action)]
+        list: bool,
+    },
 }
 
 /// Get config from path (if specified) or default value,
-pub fn config_from_arguments(arg: &ArgMatches) -> Result<Config, ApplicationError> {
-    if let Some(p) = arg.value_of("config") {
+pub fn config_from_arguments(arg: &Arg) -> Result<Config, ApplicationError> {
+    if let Some(p) = arg.config.as_ref() {
         return Config::from_file(p);
     }
     Ok(Config::default())
 }
 
 /// Manage user
-pub fn manage_user(arg: &ArgMatches, auth_path: &str) -> bool {
-    // TODO: better condition there
-    if arg.subcommand_name().is_some() {
-        if let Err(e) = user_manage(arg, auth_path) {
-            panic!("Error managing users: {}", e);
-        };
-        return true;
-    }
-    false
+pub fn manage_user(cmd: &UserCommand, auth_path: &str) {
+    if let Err(e) = user_manage(&cmd, auth_path) {
+        panic!("Error managing users: {}", e);
+    };
 }

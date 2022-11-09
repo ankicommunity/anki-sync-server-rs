@@ -11,13 +11,12 @@ pub mod user;
 #[cfg(feature = "tls")]
 use self::server::{load_ssl, server_builder_tls};
 use self::{config::Config, server::server_builder, user::create_auth_db};
-
+use clap::Parser;
 #[actix_web::main]
 async fn main() -> Result<(), ()> {
-    //cli argument  parse
-    let matches = parse_args::parse_arguments();
+    let matches = parse_args::Arg::parse();
     // Display config
-    if matches.is_present("defaults") {
+    if matches.default {
         let default_yaml = Config::default().to_string().expect("Failed to serialize.");
         println!("{}", default_yaml);
         return Ok(());
@@ -35,10 +34,10 @@ async fn main() -> Result<(), ()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
 
     // Manage account if needed, exit if this is the case
-    if parse_args::manage_user(&matches, &auth_path) {
+    if let Some(cmd) = matches.cmd.as_ref() {
+        parse_args::manage_user(&cmd, &auth_path);
         return Ok(());
     }
-
     #[cfg(feature = "tls")]
     if cfg!(feature = "tls") {
         if conf.encryption_enabled() {

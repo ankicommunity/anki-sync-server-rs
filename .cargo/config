@@ -12,7 +12,7 @@ rustflags = ["-C", "target-feature=+crt-static"]
 linker = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\link.exe"
 # Linux
 [target.aarch64-unknown-linux-musl]
-linker = "aarch64-linux-musl-gcc"
+linker = "aarch64-linux-musl-ld"
 rustflags = ["-C", "target-feature=+crt-static",
  "-C", "link-args=-static"]
 

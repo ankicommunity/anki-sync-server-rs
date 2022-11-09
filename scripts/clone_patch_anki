@@ -17,7 +17,7 @@ realpath() {
 
 PROJECT_ROOT=$(realpath)   # or result=`myfunc`
 ANKI_REPO_URL=${ANKI_REPO_URL:-"https://github.com/ankitects/anki"}
-ANKI_COMMIT=5dab7ed47ec6d17226d2fc0529c32a56e40e5f8a
+ANKI_COMMIT=7437ce41ec66a81b0e78096649a503b364a4025a
 
 #PROJECT_ROOT="$(realpath "$(dirname "$(dirname "$0")")")"
 ANKI_PATCH_FOLDER="$PROJECT_ROOT./anki_patch/"

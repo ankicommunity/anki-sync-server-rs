@@ -7,9 +7,9 @@ use crate::{
 };
 use actix_multipart::Multipart;
 use actix_web::{get, web, HttpRequest, HttpResponse, Result};
-use anki::{backend::Backend, media::sync::BufWriter};
+use anki::backend::Backend;
 use flate2::read::GzDecoder;
-use futures_util::{AsyncWriteExt, TryStreamExt as _};
+use futures_util::{io::BufWriter, AsyncWriteExt, TryStreamExt as _};
 use rusqlite::Connection;
 use std::sync::Arc;
 use std::sync::Mutex;

@@ -2,16 +2,13 @@ use crate::db::fetchone;
 use crate::{error::ApplicationError, session::Session};
 use actix_web::HttpResponse;
 #[allow(unused_imports)]
-use anki::media::{
-    files::{add_data_to_folder_uniquely, data_for_file, normalize_filename, sha1_of_data},
-    sync::{
-        async_trait::async_trait, hex, unicode_normalization, zip, FinalizeRequest,
-        FinalizeResponse, RecordBatchRequest, SyncBeginResponse, SyncBeginResult,
-    },
+use anki::media::files::{
+    add_data_to_folder_uniquely, data_for_file, normalize_filename, sha1_of_data,
 };
+use async_trait::async_trait;
+use media_structs::*;
 use rusqlite::{params, Connection, Result};
-
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -20,7 +17,37 @@ use std::{
     io::{self, Write},
     path::PathBuf,
 };
-
+#[cfg(target_vendor = "apple")]
+use unicode_normalization;
+/// these structs are copied from `anki/rslib/media/sync.rs`
+pub mod media_structs {
+    use serde::{Deserialize, Serialize};
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct FinalizeRequest {
+        pub(crate) local: u32,
+    }
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct FinalizeResponse {
+        pub(crate) data: Option<String>,
+        pub(crate) err: String,
+    }
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub(crate) struct RecordBatchRequest {
+        pub(crate) last_usn: i32,
+    }
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct SyncBeginResponse {
+        #[serde(rename = "sk")]
+        pub(crate) sync_key: String,
+        pub(crate) usn: i32,
+    }
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct SyncBeginResult {
+        pub(crate) data: Option<SyncBeginResponse>,
+        pub(crate) err: String,
+    }
+}
 pub static MOPERATIONS: [&str; 5] = [
     "begin",
     "mediaChanges",

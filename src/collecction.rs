@@ -9,7 +9,9 @@ use actix_web::{web, HttpResponse};
 use anki::prelude::AnkiError;
 use anki::{
     backend::Backend,
-    backend_proto::{sync_server_method_request::Method, sync_service::Service},
+    pb::{
+        self, sync_server_method_request::Method, sync_service::Service, SyncServerMethodRequest,
+    },
     sync::http::{HostKeyRequest, HostKeyResponse},
     timestamp::TimestampSecs,
 };
@@ -209,18 +211,17 @@ impl CollectionManager {
     ) -> Result<Vec<u8>, ApplicationError> {
         let data_vec = data.to_vec();
         let mtd = self.method;
-        let outdata_result: Result<anki::backend_proto::Json, AnkiError> =
-            actix_web::web::block(move || {
-                bd.clone()
-                    .lock()
-                    .expect("Failed to lock mutex")
-                    .sync_server_method(anki::backend_proto::SyncServerMethodRequest {
-                        method: mtd.unwrap().into(),
-                        data: data_vec,
-                    })
-            })
-            .await
-            .expect("Failed to spawn thread for blocking task");
+        let outdata_result: Result<pb::Json, AnkiError> = actix_web::web::block(move || {
+            bd.clone()
+                .lock()
+                .expect("Failed to lock mutex")
+                .sync_server_method(SyncServerMethodRequest {
+                    method: mtd.unwrap().into(),
+                    data: data_vec,
+                })
+        })
+        .await
+        .expect("Failed to spawn thread for blocking task");
         let outdata = outdata_result?.json;
 
         // extra handling

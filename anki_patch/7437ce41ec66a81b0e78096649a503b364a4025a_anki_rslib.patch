@@ -1,0 +1,85 @@
+From 3a2f0edc72b45cfe9f0562afda4808e34ad93226 Mon Sep 17 00:00:00 2001
+From: dobefore <1432338032@qq.com>
+Date: Wed, 9 Nov 2022 20:35:11 +0800
+Subject: [PATCH] patch
+
+---
+ rslib/src/backend/mod.rs    | 2 +-
+ rslib/src/collection/mod.rs | 2 +-
+ rslib/src/lib.rs            | 2 +-
+ rslib/src/media/files.rs    | 6 +++---
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/rslib/src/backend/mod.rs b/rslib/src/backend/mod.rs
+index a3cffbb05..129217f0b 100644
+--- a/rslib/src/backend/mod.rs
++++ b/rslib/src/backend/mod.rs
+@@ -63,7 +63,7 @@ use self::{
+ use crate::{backend::dbproxy::db_command_bytes, log, pb, prelude::*};
+ 
+ pub struct Backend {
+-    col: Arc<Mutex<Option<Collection>>>,
++    pub col: Arc<Mutex<Option<Collection>>>,
+     tr: I18n,
+     server: bool,
+     sync_abort: AbortHandleSlot,
+diff --git a/rslib/src/collection/mod.rs b/rslib/src/collection/mod.rs
+index e1222804f..9e31460c5 100644
+--- a/rslib/src/collection/mod.rs
++++ b/rslib/src/collection/mod.rs
+@@ -125,7 +125,7 @@ pub struct CollectionState {
+ pub struct Collection {
+     pub(crate) storage: SqliteStorage,
+     #[allow(dead_code)]
+-    pub(crate) col_path: PathBuf,
++    pub col_path: PathBuf,
+     pub(crate) media_folder: PathBuf,
+     pub(crate) media_db: PathBuf,
+     pub(crate) tr: I18n,
+diff --git a/rslib/src/lib.rs b/rslib/src/lib.rs
+index 9ef072d26..bf7582263 100644
+--- a/rslib/src/lib.rs
++++ b/rslib/src/lib.rs
+@@ -36,7 +36,7 @@ pub mod search;
+ pub mod serde;
+ mod stats;
+ pub mod storage;
+-mod sync;
++pub mod sync;
+ pub mod tags;
+ pub mod template;
+ pub mod template_filters;
+diff --git a/rslib/src/media/files.rs b/rslib/src/media/files.rs
+index 2fae6bf04..d72c2cedf 100644
+--- a/rslib/src/media/files.rs
++++ b/rslib/src/media/files.rs
+@@ -88,7 +88,7 @@ fn nonbreaking_space(char: char) -> bool {
+ /// - Any problem characters are removed.
+ /// - Windows device names like CON and PRN have '_' appended
+ /// - The filename is limited to 120 bytes.
+-pub(crate) fn normalize_filename(fname: &str) -> Cow<str> {
++pub fn normalize_filename(fname: &str) -> Cow<str> {
+     let mut output = Cow::Borrowed(fname);
+ 
+     if !is_nfc(output.as_ref()) {
+@@ -301,7 +301,7 @@ pub(crate) fn sha1_of_reader(reader: &mut impl Read) -> std::io::Result<Sha1Hash
+ }
+ 
+ /// Return the SHA1 of provided data.
+-pub(crate) fn sha1_of_data(data: &[u8]) -> Sha1Hash {
++pub fn sha1_of_data(data: &[u8]) -> Sha1Hash {
+     let mut hasher = Sha1::new();
+     hasher.update(data);
+     hasher.digest().bytes()
+@@ -414,7 +414,7 @@ pub(super) fn add_file_from_ankiweb(
+     })
+ }
+ 
+-pub(super) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<Vec<u8>>> {
++pub fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<Vec<u8>>> {
+     let mut file = match open_file(&media_folder.join(fname)) {
+         Err(e) if e.is_not_found() => return Ok(None),
+         res => res?,
+-- 
+2.28.0.windows.1
+

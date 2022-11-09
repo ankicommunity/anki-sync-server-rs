@@ -9,6 +9,8 @@ pub struct Config {
     listen: ConfigAddr,
     paths: ConfigPaths,
     encryption: Option<ConfigCert>,
+    #[cfg(feature = "account")]
+    pub account: Option<Account>,
 }
 
 impl Default for Config {
@@ -17,6 +19,8 @@ impl Default for Config {
             listen: ConfigAddr::default(),
             paths: ConfigPaths::default(),
             encryption: Some(ConfigCert::default()),
+            #[cfg(feature = "account")]
+            account: None,
         }
     }
 }
@@ -91,19 +95,34 @@ impl Default for ConfigPaths {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConfigCert {
     ssl_enable: bool,
     pub cert_file: String,
     pub key_file: String,
 }
 
-impl Default for ConfigCert {
-    fn default() -> Self {
-        ConfigCert {
-            ssl_enable: false,
-            cert_file: "".to_string(),
-            key_file: "".to_string(),
-        }
+/// account in config file
+#[cfg(feature = "account")]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Account {
+    username: Option<String>,
+    password: Option<String>,
+}
+#[cfg(feature = "account")]
+impl Account {
+    pub fn username(&self) -> Option<String> {
+        // return Some("") if field is item="",so use filter to transform Some("") to None
+        self.username
+            .as_ref()
+            .filter(|e| !e.is_empty())
+            .map(|e| e.to_string())
+    }
+
+    pub fn password(&self) -> Option<String> {
+        self.password
+            .as_ref()
+            .filter(|e| !e.is_empty())
+            .map(|e| e.to_string())
     }
 }
