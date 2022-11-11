@@ -57,7 +57,9 @@ jobs:
         run: |
           tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
           cd $HOME/openssl1.1.1f_1.1.1_linux_armv6/
-          cp -r openssl $HOME/anki-sync-server-rs/
+          cp -r openssl/ $HOME/anki-sync-server-rs/
+          cd ../../
+          ls $HOME/anki-sync-server-rs/
       # sqlite3
       - uses: robinraju/release-downloader@v1.4
         with:
@@ -72,7 +74,8 @@ jobs:
         run: |
           tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
           cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6/
-          cp -r sql $HOME/anki-sync-server-rs/
+          cp -r sql/ $HOME/anki-sync-server-rs/
+          cd ../../
     
 
       # build static-linked binary for armv6 (also suitable for aarch64)
