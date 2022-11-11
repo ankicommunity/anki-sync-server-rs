@@ -117,24 +117,21 @@ pub fn user_manage<P: AsRef<Path>>(cmd: &UserCommand, dbpath: P) -> Result<(), U
             list,
         } => {
             if let Some(account) = add {
-                add_user(&account, &dbpath)?;
+                add_user(account, &dbpath)?;
             }
             if let Some(users) = del {
                 for u in users {
-                    del_user(&u, &dbpath)?;
+                    del_user(u, &dbpath)?;
                 }
             }
             if let Some(account) = pass {
-                passwd(&account, &dbpath)?;
+                passwd(account, &dbpath)?;
             }
             if *list {
                 let user_list = user_list(&dbpath)?;
-                match user_list {
-                    Some(v) => {
-                        v.into_iter().for_each(|i| println!("{}", i));
-                    }
-                    None => {}
-                }
+                if let Some(v) = user_list {
+                                     v.into_iter().for_each(|i| println!("{}", i));
+                               }
             }
         }
     }
@@ -171,7 +168,7 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
     // write input message
     hasher.update(username);
     hasher.update(password);
-    hasher.update(&salt);
+    hasher.update(salt);
     // read hash digest and consume hasher
     let result = hasher.finalize();
     let pass_hash = format!("{:x}{}", result, salt);

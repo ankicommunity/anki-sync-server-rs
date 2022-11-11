@@ -25,54 +25,56 @@ jobs:
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+
       - name: Add cargo taget armv6
         run: rustup target add arm-unknown-linux-musleabihf
-      #with musl c
-      - name: Download cross-compile toolchains musl
-        run: wget  -P $HOME https://musl.cc/arm-linux-musleabihf-cross.tgz
+
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/musl-cross"
+          tag: "0.1.0"
+          fileName: "arm-linux-musleabihf-cross.tgz"
+
+      - name: Copy musl-cross to home
+        run: cp  arm-linux-musleabihf-cross.tgz $HOME
 
       - name: unpack cross-compile toolchains musl
         run: tar -zxvf $HOME/arm-linux-musleabihf-cross.tgz -C $HOME
+      # openssl
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/cross-compile-openssl-musl"
+          tag: "1.1.1"
+          fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
+      - name: Copy openssl lib to home
+        run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
 
-      # used to cross compile openssl and sqlite
-      - name: Download cross-compile toolchains gnu 
+      - name: unpack  openssl 
         run: |
-          git clone --depth 1 https://github.com/raspberrypi/tools.git $HOME/rpitools
-          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
-          arm-linux-gnueabihf-gcc -v
+          tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
+          cd $HOME/openssl1.1.1f_1.1.1_linux_armv6/
+          cp -r openssl $HOME/anki-sync-server-rs/
+      # sqlite3
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/cross-compile-sqlite-musl"
+          tag: "0.1.1"
+          fileName: "sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz"
+          
+      - name: Copy sqlite lib to home
+        run: cp sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz $HOME
 
-      - name: Download and unpack lib openssl
-        run: | 
-          wget --no-check-certificate https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz
-          tar -zxvf openssl-1.1.1f.tar.gz -C .
-          ls .
-      
-      - name: Compile openssl
-        run: | 
-          export PATH="$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
-
-          export MACHINE=armv7
-          export ARCH=arm
-          export CC=arm-linux-gnueabihf-gcc
-
-          mkdir -p $HOME/openssl
-          cd openssl-1.1.1f
-          ./config shared --prefix=$HOME/anki-sync-server-rs/openssl && make 
-          make install
-          cd ..
-
-      # compile sqlite
-      - name: Download and unpack lib sqlite3
+      - name: unpack  sqlite3
         run: |
-          wget --no-check-certificate https://www.sqlite.org/2022/sqlite-autoconf-3380200.tar.gz
-          tar -zxvf sqlite-autoconf-3380200.tar.gz -C .
-      - name: compile sqlite3
-        run: |
-          mkdir -p $HOME/sql
-          cd sqlite-autoconf-3380200
-          ./configure CC=$HOME/rpitools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc  --host=arm-linux --prefix=$HOME/sql
-          make && make install
-      
+          tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
+          cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz/
+          cp -r sql $HOME/anki-sync-server-rs/
+    
+
       # build static-linked binary for armv6 (also suitable for aarch64)
       - name: Build 
         run: | 
@@ -81,7 +83,6 @@ jobs:
           export OPENSSL_STATIC=true
 
           export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
-          cp -r $HOME/sql .
           cargo build --target arm-unknown-linux-musleabihf --release --features tls
   
       - name: Strip binaries (ankisyncd)
@@ -120,6 +121,10 @@ jobs:
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -165,6 +170,10 @@ jobs:
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -207,7 +216,12 @@ jobs:
       # clone and patch anki library  
       - name: Clone patch Anki
         run: .\scripts\clone_patch_anki.bat
-          
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:

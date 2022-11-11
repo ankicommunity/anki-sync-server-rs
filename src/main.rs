@@ -35,7 +35,7 @@ async fn main() -> Result<(), ()> {
 
     // Manage account if needed, exit if this is the case
     if let Some(cmd) = matches.cmd.as_ref() {
-        parse_args::manage_user(&cmd, &auth_path);
+        parse_args::manage_user(cmd, &auth_path);
         return Ok(());
     }
     #[cfg(feature = "tls")]

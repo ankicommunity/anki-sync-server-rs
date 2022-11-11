@@ -51,12 +51,12 @@ pub fn load_ssl(localcert: &ConfigCert) -> Result<ServerConfig, ApplicationError
 /// create session table if db does not exist in provided path
 fn open_session_db(session_db_path: &str) -> Result<Connection, ApplicationError> {
     if !Path::new(&session_db_path).exists() {
-        let conn = Connection::open(&session_db_path)?;
+        let conn = Connection::open(session_db_path)?;
         let sql="CREATE TABLE session (hkey VARCHAR PRIMARY KEY, skey VARCHAR, username VARCHAR, path VARCHAR)";
         conn.execute(sql, [])?;
         return Ok(conn);
     }
-    Ok(Connection::open(&session_db_path)?)
+    Ok(Connection::open(session_db_path)?)
 }
 pub async fn server_builder(config: &Config) {
     std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");

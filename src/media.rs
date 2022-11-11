@@ -270,7 +270,7 @@ impl MediaManager {
 
         drop(meta_file);
         let mut usn = self.last_usn()?;
-        fs::create_dir_all(&media_dir)?;
+        fs::create_dir_all(media_dir)?;
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
             let name = file.name();

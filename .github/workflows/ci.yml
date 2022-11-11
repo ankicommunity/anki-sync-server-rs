@@ -38,6 +38,11 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+
       - name: Set up python
         uses: actions/setup-python@v2
 
@@ -70,6 +75,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+          
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x' 
       
       # clone and patch anki library  
       - name: Clone patch Anki
