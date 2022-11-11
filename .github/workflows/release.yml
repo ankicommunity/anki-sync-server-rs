@@ -71,7 +71,7 @@ jobs:
       - name: unpack  sqlite3
         run: |
           tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
-          cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz/
+          cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6/
           cp -r sql $HOME/anki-sync-server-rs/
     
 
