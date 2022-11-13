@@ -21,15 +21,20 @@ jobs:
           toolchain: stable
           override: true
 
-      # clone and patch anki library  
+      # clone and patch anki library 
+      # need to disable bundled feature in rusqlite in anki lib,so copy after-modified cargo file 
       - name: Clone patch Anki
-        run: sh ./scripts/clone_patch_anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          cp ./scripts/Cargo.toml anki/rslib/
 
       - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-
+        run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+          mkdir -p $HOME/protoc
+          unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+          
       - name: Add cargo taget armv6
         run: rustup target add arm-unknown-linux-musleabihf
 
@@ -56,10 +61,7 @@ jobs:
       - name: unpack  openssl 
         run: |
           tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
-          cd $HOME/openssl1.1.1f_1.1.1_linux_armv6/
-          cp -r openssl/ $HOME/anki-sync-server-rs/
-          cd ../../
-          ls $HOME/anki-sync-server-rs/
+          cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
       # sqlite3
       - uses: robinraju/release-downloader@v1.4
         with:
@@ -74,19 +76,23 @@ jobs:
         run: |
           tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
           cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6/
-          cp -r sql/ $HOME/anki-sync-server-rs/
-          cd ../../
-    
-
+          cp -r sql/ $HOME
+  
       # build static-linked binary for armv6 (also suitable for aarch64)
       - name: Build 
         run: | 
-          export OPENSSL_LIB_DIR=$HOME/anki-sync-server-rs/openssl/lib
-          export OPENSSL_INCLUDE_DIR=$HOME/anki-sync-server-rs/openssl/include
+          export PATH="$PATH:$HOME/protoc/bin"
+          
+          export OPENSSL_LIB_DIR=$HOME/openssl/lib
+          export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
           export OPENSSL_STATIC=true
-
+          
+          export SQLITE3_LIB_DIR=$HOME/sql/lib
+          export SQLITE3_INCLUDE_DIR=$HOME/sql/include
+          export SQLITE3_STATIC=1
+          
           export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
-          cargo build --target arm-unknown-linux-musleabihf --release --features tls
+          cargo build --target arm-unknown-linux-musleabihf --release --features tls 
   
       - name: Strip binaries (ankisyncd)
         run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release/ankisyncd
@@ -99,7 +105,6 @@ jobs:
           cp target/arm-unknown-linux-musleabihf/release/ankisyncd output/
           cp ankisyncd.toml output/
          
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -172,12 +177,10 @@ jobs:
       # clone and patch anki library  
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
-     
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-
+      - name: Install protoc
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          brew install protobuf
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -195,7 +198,6 @@ jobs:
           cp target/release/ankisyncd output/
           cp ankisyncd.toml output/
          
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -239,7 +241,6 @@ jobs:
           cp target\release\ankisyncd.exe output\
           cp ankisyncd.toml output\
          
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -296,7 +297,6 @@ jobs:
       - name: Restore armv6 File Modes
         run: |
           chmod 755 ${{ steps.info.outputs.armv6dir }}/ankisyncd*
-
       - name: Create armv6 tarball
         run: tar -zcvf ${{ steps.info.outputs.armv6dir }}.tar.gz ${{ steps.info.outputs.armv6dir }}
 
@@ -322,7 +322,6 @@ jobs:
       - name: Restore Linux File Modes
         run: |
           chmod 755 ${{ steps.info.outputs.linuxdir }}/ankisyncd*
-
       - name: Create Linux tarball
         run: tar -zcvf ${{ steps.info.outputs.linuxdir }}.tar.gz ${{ steps.info.outputs.linuxdir }}
 
