@@ -9,12 +9,12 @@ The `Dockerfile` at the root of the repository controls the build process.
 ```
 docker pull ankicommunity/anki-sync-server-rs:latest
 ```
-2. run it in background (you can specify the container name by passing `--name=ankisyncd` or use default name)
+2. run it in background (you can specify the container name by passing `--name=ankisyncd` or use default name).And,you can pass env vars to following command line to add users,for example,following part of env vars will add an account whose username is `test` and password is `123456`.
 ```
-docker run -d -it --name=ankisyncd ankicommunity/anki-sync-server-rs:latest
+docker run -d -it --name=ankisyncd -e ANKISYNCD_USERNAME=test -e ANKISYNCD_PASSWORD=123456 ankicommunity/anki-sync-server-rs:latest
 ```
 3. add user
-bring up the shell of the `ankisyncd` container(or default container name) and run command
+If env variables are already set ,which means the account has been added,there is no need to do this step.If not,bring up the shell of the `ankisyncd` container(or default container name) and run command
 ```
 docker exec -it ankisyncd /bin/bash
 ankisyncd user -a username password

@@ -33,12 +33,6 @@ If you want to perform other operations ,such as deleting users or changing pass
 ### Installing (Docker)
 details see [Docker](docs/CONTAINER.md)
 
-### Optional Server Configuration
-If you want to change the folder where sync data reside or change the listening port,you can modify the configuration file `ankisyncd.toml`,and then run server,
-```
-./ankisyncd  --config /path/to/ankisyncd.toml
-```
-
 You can also build from source code [Install](docs/INSTALL.md) or build docker image from source [DockerBuild](docs/CONTAINER.md).
 ## Set up Anki (Clients)
 ### Anki 2.1(install add-on from ankiweb)
@@ -51,7 +45,7 @@ You can also build from source code [Install](docs/INSTALL.md) or build docker i
 
 ### AnkiDroid
 
-Go to `Advanced -> Custom sync server` (Go to `Settings` -> `Sync` -> `Custom sync server` in above 2.16)
+Go to `Advanced -> Custom sync server` (Go to `Settings` -> `Sync` -> `Custom sync server` in  2.16 and above)
 
 Unless you have set up a reverse proxy to handle encrypted connections, use `http` as the protocol. The port will be either the default `27701`, or whatever you have specified in `ankisyncd.toml` (if using a reverse proxy, whatever port you configured to accept the front-end connection).
 
@@ -82,7 +76,19 @@ See [LICENSE](LICENSE)
 
 ## Compatibility
 When the server made its first appearance,we have done some tests,details see [TEST](docs/TEST_SERVER_CLIENT.md)
+## Configuration
+### Env vars
+Ankidyncd supports two Env variables to add users,`ANKISYNCD_USERNAME`,`ANKISYNCD_PASSWORD`.
+|Key|Value|
+|-|-|
+|ANKISYNCD_USERNAME|username,non-empty|
+|ANKISYNCD_PASSWORD|password,non-empty|
 
+### Optional Server Configuration
+If you want to change the folder where sync data reside or change the listening port,you can modify the configuration file `ankisyncd.toml`,and then run server,
+```
+./ankisyncd  --config /path/to/ankisyncd.toml
+```
 
 ## REFERENCE
 ankisyncd architecture or apis depend on [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) and

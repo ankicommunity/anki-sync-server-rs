@@ -29,11 +29,7 @@
 4. 到这里服务端的配置基本完成了。
 ### 安装（通过容器Docker安装）
 具体细节查看文件[Docker](docs/CONTAINER.md)
-### 可选的服务端配置
-注意，这并不是必选项，这一步可以略过。如果您想改变服务端同步数据存储位置或者改变监听端口，可以修改我们提供的配置文件`ankisyncd.toml`,它也在解压缩后的文件夹里面，最后运行如下命令（注：下面的命令适用于linux/和macOS，使用Windows的用户将`ankisyncd`替换成`ankisyncd.exe`,配置文件`ankisyncd.toml`的具体路径根据您计算机配置文件的实际路径而定），
-```
-./ankisyncd  --config /path/to/ankisyncd.toml
-```
+
 当然您也可以同步从源码构建目标平台的二进制文件[Install](docs/INSTALL.md)或者从源码构建docker镜像来安装服务端[DockerBuild](docs/CONTAINER.md)。
 ## 设置Anki客户端
 ### Anki 电脑端
@@ -62,6 +58,18 @@
 
 ## 贡献
 如果您有建议或者批评，请提交问题或者PR，我们洗耳恭听。
+## 配置
+### 环境变量
+支持通过换届变量添加账号啦。
+|键|值|
+|-|-|
+|ANKISYNCD_USERNAME|用户名,非空|
+|ANKISYNCD_PASSWORD|密码,非空|
+### 可选的服务端配置
+注意，这并不是必选项，这一步可以略过。如果您想改变服务端同步数据存储位置或者改变监听端口，可以修改我们提供的配置文件`ankisyncd.toml`,它也在解压缩后的文件夹里面，最后运行如下命令（注：下面的命令适用于linux/和macOS，使用Windows的用户将`ankisyncd`替换成`ankisyncd.exe`,配置文件`ankisyncd.toml`的具体路径根据您计算机配置文件的实际路径而定），
+```
+./ankisyncd  --config /path/to/ankisyncd.toml
+```
 
 ## 许可
 See [LICENSE](LICENSE)
