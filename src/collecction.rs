@@ -200,10 +200,10 @@ impl CollectionManager {
         Ok(())
     }
     /// processing collection sync procedures(e.g. start...) using API from anki lib
-    /// and return processed data as response
+    /// and return response data ready to be sent back to clients.
     ///
     /// note:some API procedures will not produce the desired data we want,so there is extra handling.
-    async fn resp_data(
+    async fn do_sync_procedures(
         &self,
         bd: web::Data<Mutex<Backend>>,
         data: &[u8],
@@ -253,7 +253,7 @@ impl CollectionManager {
         let final_data = self.reprocess_data_frame(data.to_vec(), session.clone())?;
         self.reopen_col(session, &bd)?;
         let outdata = self
-            .resp_data(bd.clone(), &final_data, hostkey_data)
+            .do_sync_procedures(bd.clone(), &final_data, hostkey_data)
             .await?;
         Ok(HttpResponse::Ok().body(outdata))
     }
