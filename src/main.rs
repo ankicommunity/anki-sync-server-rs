@@ -12,6 +12,15 @@ pub mod user;
 use self::server::{load_ssl, server_builder_tls};
 use self::{config::Config, server::server_builder, user::create_auth_db};
 use clap::Parser;
+use lazy_static::lazy_static;
+use std::env;
+use user::add_user;
+
+lazy_static! {
+    static ref USERNAME: String = env::var("ANKISYNCD_USERNAME").unwrap_or_else(|_| "".to_string());
+    static ref PASSWORD: String = env::var("ANKISYNCD_PASSWORD").unwrap_or_else(|_| "".to_string());
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), ()> {
     let matches = parse_args::Arg::parse();
@@ -34,6 +43,10 @@ async fn main() -> Result<(), ()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
 
     // Manage account if needed, exit if this is the case
+    if !USERNAME.is_empty() && !PASSWORD.is_empty() {
+        add_user(&[USERNAME.to_string(), PASSWORD.to_string()], &auth_path)
+            .expect("adding user from env vars fail");
+    }
     if let Some(cmd) = matches.cmd.as_ref() {
         parse_args::manage_user(cmd, &auth_path);
         return Ok(());

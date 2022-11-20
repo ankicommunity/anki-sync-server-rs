@@ -17,8 +17,6 @@ use std::{
     io::{self, Write},
     path::PathBuf,
 };
-#[cfg(target_vendor = "apple")]
-use unicode_normalization;
 /// these structs are copied from `anki/rslib/media/sync.rs`
 pub mod media_structs {
     use serde::{Deserialize, Serialize};

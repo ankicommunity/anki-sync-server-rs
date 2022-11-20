@@ -131,7 +131,7 @@ impl CollectionManager {
         session: Session,
     ) -> Result<Vec<u8>, ApplicationError> {
         if self.method == Some(Method::FullUpload) {
-            // write uncompressed data field parsed from request to file,and return
+            // write decompressed data field parsed from request to file,and return
             // its path ,which used as argument passed to method full_upload,in bytes.
             // session is safe to unwrap
             let colpath = format!("{}.tmp", session.col_path().display());
@@ -200,10 +200,10 @@ impl CollectionManager {
         Ok(())
     }
     /// processing collection sync procedures(e.g. start...) using API from anki lib
-    /// and return processed data as response
+    /// and return response data ready to be sent back to clients.
     ///
     /// note:some API procedures will not produce the desired data we want,so there is extra handling.
-    async fn resp_data(
+    async fn do_sync_procedures(
         &self,
         bd: web::Data<Mutex<Backend>>,
         data: &[u8],
@@ -253,7 +253,7 @@ impl CollectionManager {
         let final_data = self.reprocess_data_frame(data.to_vec(), session.clone())?;
         self.reopen_col(session, &bd)?;
         let outdata = self
-            .resp_data(bd.clone(), &final_data, hostkey_data)
+            .do_sync_procedures(bd.clone(), &final_data, hostkey_data)
             .await?;
         Ok(HttpResponse::Ok().body(outdata))
     }

@@ -130,8 +130,8 @@ pub fn user_manage<P: AsRef<Path>>(cmd: &UserCommand, dbpath: P) -> Result<(), U
             if *list {
                 let user_list = user_list(&dbpath)?;
                 if let Some(v) = user_list {
-                                     v.into_iter().for_each(|i| println!("{}", i));
-                               }
+                    v.into_iter().for_each(|i| println!("{}", i));
+                }
             }
         }
     }

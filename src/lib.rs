@@ -8,6 +8,7 @@ pub mod server;
 pub mod session;
 pub mod sync;
 pub mod user;
+mod log_middleware;
 use clap::Parser;
 
 pub use crate::config::Config;
