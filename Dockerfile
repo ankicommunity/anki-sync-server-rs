@@ -3,7 +3,7 @@ WORKDIR /usr/src/anki-sync-server-rs
 # copy from host to container
 COPY . .
 # prost-build failed for armv7h https://github.com/ankicommunity/anki-sync-server-rs/issues/22 
-FROM znly/protoc:latest
+FROM strophy/protoc:4.0.1
 # RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --assume-yes protobuf-compiler git
 RUN scripts/clone_patch_anki
 RUN cargo build --release  
