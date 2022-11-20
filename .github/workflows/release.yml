@@ -129,17 +129,19 @@ jobs:
       # clone and patch anki library  
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
-
+        
       - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
+        run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+          mkdir -p $HOME/protoc
+          unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+          
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --features tls
+        run: |
+          export PATH="$PATH:$HOME/protoc/bin"
+          cargo build --release --features tls
 
       - name: Strip binaries (ankisyncd)
         run: strip target/release/ankisyncd
