@@ -16,12 +16,12 @@ use std::sync::Mutex;
 use std::{collections::HashMap, io::Read};
 use urlparse::urlparse;
 
-/// parse requests from clients and decode (uncompress if needed)
+/// parse requests from clients and decode (decompress if needed)
 mod parse_request {
     use super::*;
-    ///Uncompresses a Gz Encoded vector of bytes according to field c(compression) from request map
+    ///decompresses a Gz Encoded vector of bytes according to field c(compression) from request map
     /// and returns a Vec\<u8>
-    /// not uncompress if compression is None
+    /// not decompress if compression is None
     pub fn decode(
         data: Vec<u8>,
         compression: Option<&Vec<u8>>,
@@ -29,7 +29,7 @@ mod parse_request {
         let d = if let Some(c) = compression {
             // ascii code 49 is 1,which means data from request is compressed
             if c == &vec![49] {
-                // is empty and cannot be passed to uncompress when on full_download sent from Ankidroid client
+                // is empty and cannot be passed to decompress when on full_download sent from Ankidroid client
                 if data.is_empty() {
                     data
                 } else {
@@ -136,6 +136,8 @@ pub async fn welcome() -> Result<HttpResponse> {
         .body("Anki Sync Server"))
 }
 // TODO have an actix middleware handler that prints errors and returns code 500
+// [2022-11-18T09:45:26+08:00 INFO  actix_web::middleware::logger] 192.168.0.88 "POST /sync/meta HTTP/1.1" 500 0 "-" "-" 0.001708
+
 pub async fn sync_app_no_fail(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,

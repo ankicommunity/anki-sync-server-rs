@@ -135,3 +135,6 @@ Contribution update :
 download error
 reproduce: upload to server,log out,delete deck,log in,sync.exit client and
 server,launch both,and sync ,download error.
+
+
+How to append username to log info?

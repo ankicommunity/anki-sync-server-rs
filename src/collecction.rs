@@ -131,7 +131,7 @@ impl CollectionManager {
         session: Session,
     ) -> Result<Vec<u8>, ApplicationError> {
         if self.method == Some(Method::FullUpload) {
-            // write uncompressed data field parsed from request to file,and return
+            // write decompressed data field parsed from request to file,and return
             // its path ,which used as argument passed to method full_upload,in bytes.
             // session is safe to unwrap
             let colpath = format!("{}.tmp", session.col_path().display());

@@ -1,6 +1,6 @@
 [package]
 name = "ankisyncd"
-version = "0.2.1"
+version = "0.2.5"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 # documentation = "https://docs.rs/ankisyncd/"
@@ -39,6 +39,7 @@ async-trait = "0.1.58"
 zip = { version = "0.6.2", default-features = false, features = ["deflate", "time"] }
 unicode-normalization = "0.1.22"
 lazy_static = "1.4.0"
+log = "0.4"
 
 [dependencies.rustls]
 optional = true
