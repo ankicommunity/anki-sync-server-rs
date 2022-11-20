@@ -91,6 +91,7 @@ jobs:
           export SQLITE3_INCLUDE_DIR=$HOME/sql/include
           export SQLITE3_STATIC=1
           
+          cp -r $HOME/sql/ .
           export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
           cargo build --target arm-unknown-linux-musleabihf --release --features tls 
   
