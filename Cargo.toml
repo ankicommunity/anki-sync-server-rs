@@ -49,7 +49,7 @@ version = "0.20.7"
 optional = true
 version = "1.0.1"
 
-[target.'cfg(not(arm))'.dependencies]
+[target.'cfg(target_arch="x86_64")'.dependencies]
 rusqlite = {version = "0.28.0",features = ["bundled"]}
 
 # native build on host or docker
