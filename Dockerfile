@@ -5,7 +5,8 @@ COPY . .
 # prost-build failed for armv7h https://github.com/ankicommunity/anki-sync-server-rs/issues/22 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --assume-yes protobuf-compiler git
 RUN scripts/clone_patch_anki
-RUN cargo build --release  && cp ./target/release/ankisyncd . && cargo clean
+RUN cargo build --release  
+RUN cp ./target/release/ankisyncd . && cargo clean
 
 FROM debian:stable-slim as runner
 #RUN apt-get update && apt-get install -y extra-runtime-dependencies && rm -rf /var/lib/apt/lists/*
