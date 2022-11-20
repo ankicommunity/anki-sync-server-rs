@@ -1,5 +1,5 @@
 FROM strophy/protoc:4.0.1 as protocc
-RUN whereis protoc
+RUN protoc -h
 FROM rust:latest as builder
 WORKDIR /usr/src/anki-sync-server-rs
 # copy from host to container
