@@ -22,7 +22,7 @@ jobs:
           images: ankicommunity/anki-sync-server-rs
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=ref,event=branch
+            latest
             type=semver,pattern={{version}}
            
 
