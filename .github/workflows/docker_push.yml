@@ -45,6 +45,7 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v3
         with:
+          config: .github/buildkitd.toml
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
