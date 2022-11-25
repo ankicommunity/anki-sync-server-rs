@@ -55,7 +55,7 @@ jobs:
           retention-days: 1
 
   docker:
-    needs: build
+    needs: buildx
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
