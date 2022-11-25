@@ -1,4 +1,5 @@
 <div align="center">
+
 # anki-sync-server-rs
 
 [![License](https://img.shields.io/github/license/ankicommunity/anki-sync-server-rs)](https://github.com/ankicommunity/anki-sync-server-rs/blob/master/LINCENSE)[![Github status](https://img.shields.io/github/checks-status/ankicommunity/anki-sync-server-rs/master?label=github%20status)](https://github.com/ankicommunity/anki-sync-server-rs/actions)[![Github contributors](https://img.shields.io/github/contributors/ankicommunity/anki-sync-server-rs?label=github%20contributors)](https://github.com/ankicommunity/anki-sync-server-rs/graphs/contributors)[![DockerHub version](https://img.shields.io/docker/v/ankicommunity/anki-sync-server-rs?label=dockerhub%20version&sort=date)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)[![DockerHub pulls](https://img.shields.io/docker/pulls/ankicommunity/anki-sync-server-rs)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)[![DockerHub stars](https://img.shields.io/docker/stars/ankicommunity/anki-sync-server-rs)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)
@@ -13,6 +14,7 @@
 ### 安装 (通过二进制可执行文件)
 1. 下载二进制文件，地址[releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) ，注意下载与您的计算机平台相符的文件，比如说，对于Windows的用户来说，下载文件名带有`windows_x86_64`的文件。下载后解压缩。
 2. 添加账号（注：下面提到的`username`，`password`为您想设置的用户名和密码）。
+
 对于Linux、macOS的用户，运行命令：
 ```
  ./ankisyncd user --add username password
@@ -57,7 +59,7 @@
 想要支持`https`，查看文件[certificate setup](docs/CERTS.md) （注：2.16版本允许不安全HTTP连接）；反向代理如何设置，查看文件[reverse proxy setup](docs/REVERSE_PROXY.md)。
 
 ## 贡献
-如果您有建议或者批评，请提交问题或者PR，我们洗耳恭听。
+如果您有建议或者批评，请提交问题或者PR，我们洗耳恭听。具体操作查看文件[CONTRIBUTING.md](CONTRIBUTING.md)。
 ## 配置
 ### 环境变量
 支持通过换届变量添加账号啦。
