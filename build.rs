@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 fn main() {
-     // should consider native build on arm platform
+    // should consider native build on arm platform
 
     // used in cross compile while building with CD
     // such as arm-unknown-linux-musleabihf
@@ -13,7 +13,6 @@ fn main() {
         println!("cargo:rustc-link-lib=static=sqlite3");
     }
 
-    
     let pat = "tls";
     let key = format!("CARGO_FEATURE_{}", pat).to_uppercase();
     if env::var_os(key).is_some() {

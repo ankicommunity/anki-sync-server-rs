@@ -1,3 +1,4 @@
+use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ApplicationError {
@@ -25,8 +26,6 @@ pub enum ApplicationError {
     ValueNotFound(String),
     #[error("ParseConfig error: {0}")]
     ParseConfig(String),
-    #[error("Unknown data user error")]
-    Unknown,
     #[error(transparent)]
     UserError(#[from] crate::user::UserError),
     #[error("Error while serializing data: {0}")]
@@ -39,4 +38,30 @@ pub enum ApplicationError {
     ParseGET(String),
     #[error("Error while paring multipart stream: {0}")]
     Multipart(#[from] actix_multipart::MultipartError),
+    /// 500
+    #[error("InternalServerError {0}")]
+    InternalServerError(String),
+    #[error("request url not found: {0}")]
+    UrlNotFound(String),
+}
+
+/// Actix Web uses `ResponseError` for conversion of errors to a response
+impl ResponseError for ApplicationError {
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            ApplicationError::UserError(e) => {
+                // found in anki/rslib/src/error/network.rs
+                log::info!("{}", e.to_string());
+                HttpResponse::Forbidden().finish()
+            }
+            ApplicationError::UrlNotFound(e) => {
+                log::info!("{e}");
+                HttpResponse::NotFound().finish()
+            }
+            e => {
+                log::info!("{}", e.to_string());
+                HttpResponse::InternalServerError().finish()
+            }
+        }
+    }
 }

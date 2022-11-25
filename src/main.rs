@@ -14,7 +14,7 @@ use self::{config::Config, server::server_builder, user::create_auth_db};
 use clap::Parser;
 use lazy_static::lazy_static;
 use std::env;
-use user::add_user;
+use user::{add_user, user_exists};
 
 lazy_static! {
     static ref USERNAME: String = env::var("ANKISYNCD_USERNAME").unwrap_or_else(|_| "".to_string());
@@ -44,8 +44,10 @@ async fn main() -> Result<(), ()> {
 
     // Manage account if needed, exit if this is the case
     if !USERNAME.is_empty() && !PASSWORD.is_empty() {
-        add_user(&[USERNAME.to_string(), PASSWORD.to_string()], &auth_path)
-            .expect("adding user from env vars fail");
+        if !user_exists(&USERNAME, &auth_path).expect("user existing error") {
+            add_user(&[USERNAME.to_string(), PASSWORD.to_string()], &auth_path)
+                .expect("adding user from env vars fail");
+        }
     }
     if let Some(cmd) = matches.cmd.as_ref() {
         parse_args::manage_user(cmd, &auth_path);

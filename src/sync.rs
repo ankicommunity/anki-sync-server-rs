@@ -26,23 +26,24 @@ mod parse_request {
         data: Vec<u8>,
         compression: Option<&Vec<u8>>,
     ) -> Result<Vec<u8>, ApplicationError> {
-        let d = if let Some(c) = compression {
-            // ascii code 49 is 1,which means data from request is compressed
-            if c == &vec![49] {
-                // is empty and cannot be passed to decompress when on full_download sent from Ankidroid client
-                if data.is_empty() {
-                    data
+        let d = match compression {
+            Some(c) => {
+                // ascii code 49 is 1,which means data from request is compressed
+                if c == &vec![49] {
+                    // is empty and cannot be passed to decompress when on full_download sent from Ankidroid client
+                    if data.is_empty() {
+                        data
+                    } else {
+                        let mut d = GzDecoder::new(data.as_slice());
+                        let mut b = vec![];
+                        d.read_to_end(&mut b)?;
+                        b
+                    }
                 } else {
-                    let mut d = GzDecoder::new(data.as_slice());
-                    let mut b = vec![];
-                    d.read_to_end(&mut b)?;
-                    b
+                    data
                 }
-            } else {
-                data
             }
-        } else {
-            data
+            None => data,
         };
 
         Ok(d)
@@ -135,9 +136,6 @@ pub async fn welcome() -> Result<HttpResponse> {
         .content_type("text/plain")
         .body("Anki Sync Server"))
 }
-// TODO have an actix middleware handler that prints errors and returns code 500
-// [2022-11-18T09:45:26+08:00 INFO  actix_web::middleware::logger] 192.168.0.88 "POST /sync/meta HTTP/1.1" 500 0 "-" "-" 0.001708
-
 pub async fn sync_app_no_fail(
     session_manager: web::Data<Mutex<SessionManager>>,
     bd: web::Data<Mutex<Backend>>,
@@ -147,7 +145,7 @@ pub async fn sync_app_no_fail(
     path: web::Path<(String, String)>, //(endpoint,sync_method)
     session_db_conn: web::Data<Mutex<Connection>>,
 ) -> Result<HttpResponse> {
-    match sync_app(
+    Ok(sync_app(
         session_manager,
         bd,
         config_data,
@@ -156,14 +154,7 @@ pub async fn sync_app_no_fail(
         path,
         session_db_conn,
     )
-    .await
-    {
-        Ok(v) => Ok(v),
-        Err(e) => {
-            eprintln!("Sync error: {}", e);
-            Ok(HttpResponse::InternalServerError().finish())
-        }
-    }
+    .await?)
 }
 
 pub async fn sync_app(
@@ -178,10 +169,7 @@ pub async fn sync_app(
     let (_, sync_method) = path.into_inner();
     let map = parse_request_method(req, payload).await?;
     // return an empty vector instead of None if data field is not in request map
-    let data_frame = match map.get("data") {
-        Some(d) => d.to_owned(),
-        None => Vec::new(),
-    };
+    let data_frame = map.get("data").map(ToOwned::to_owned).unwrap_or_default();
     let mtd = map_sync_method(sync_method.as_str());
     let data = decode(data_frame, map.get("c"))?;
     match sync_method.as_str() {
@@ -203,6 +191,6 @@ pub async fn sync_app(
             mm.media_sync(media_op, session, data).await
         }
 
-        _ => Ok(HttpResponse::NotFound().finish()),
+        url => Err(ApplicationError::UrlNotFound(url.to_string())),
     }
 }

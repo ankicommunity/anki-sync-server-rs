@@ -1,8 +1,7 @@
 use crate::error::ApplicationError;
-use crate::session::Session;
 use crate::{
     config::Config,
-    session::{load_session, SessionManager},
+    session::{load_session, Session, SessionManager},
     user::authenticate,
 };
 use actix_web::{web, HttpResponse};
@@ -65,7 +64,8 @@ fn extract_usrname(path: &Path) -> String {
         .to_string_lossy()
         .to_string()
 }
-/// return `hostkey` as response data if user authenticates successfully
+/// return `hostkey` as response data ifSessionmanager user authenticates successfully.
+/// `hoskey` is the username digest generated on the server.
 ///
 /// save session to manager and write session to database (session.db)
 async fn operation_hostkey(
@@ -80,11 +80,11 @@ async fn operation_hostkey(
     let hkey = gen_hostkey(&hkreq.username);
     let dir = config.data_root_path();
     let user_path = Path::new(&dir).join(&hkreq.username);
-    let session = Session::new(&hkreq.username, user_path)?;
+    let session = Session::new(&hkreq.username, user_path, &hkey)?;
     session_manager
         .lock()
         .expect("Could not lock mutex!")
-        .save(hkey.clone(), session.clone(), &conn)?;
+        .save(session.clone(), &conn)?;
 
     let hkres = HostKeyResponse { key: hkey };
     Ok((hkres, session))
@@ -257,23 +257,4 @@ impl CollectionManager {
             .await?;
         Ok(HttpResponse::Ok().body(outdata))
     }
-}
-
-#[test]
-fn test_gen_random() {
-    // String:
-    let mut rng = thread_rng();
-    let s: String = (&mut rng)
-        .sample_iter(Alphanumeric)
-        .take(8)
-        .map(char::from)
-        .collect();
-    // MD0ZcI2
-    println!("{}", &s);
-}
-#[test]
-fn test_tssecs() {
-    let ts = TimestampSecs::now();
-    // 1634543952
-    println!("{}", ts);
 }

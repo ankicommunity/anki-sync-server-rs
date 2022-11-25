@@ -21,8 +21,8 @@ pub enum UserError {
     MissingValues(String),
     #[error("Authentication error: {0}")]
     Authentication(String),
-    #[error("Unknown data user error")]
-    Unknown,
+    #[error("Path not found error")]
+    PathNotFound,
 }
 
 impl From<(rusqlite::Connection, rusqlite::Error)> for UserError {
@@ -74,7 +74,7 @@ fn add_user_to_auth_db<P: AsRef<Path>>(
     conn.close()?;
     let user_dir = match dbpath.as_ref().to_owned().parent() {
         Some(p) => p.join("collections").join(username),
-        None => return Err(UserError::Unknown),
+        None => return Err(UserError::PathNotFound),
     };
     create_user_dir(user_dir)?;
     Ok(())
@@ -144,22 +144,18 @@ pub fn user_list<P: AsRef<Path>>(dbpath: P) -> Result<Option<Vec<String>>, UserE
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map([], |r| r.get(0))?;
 
-    let v1 = rows.into_iter().collect::<Result<Vec<String>, _>>();
-    let v = match v1 {
-        Ok(a) => a,
-        Err(e) => return Err(UserError::Sqlite(e)),
-    };
-    let r = if v.is_empty() { None } else { Some(v) };
-    Ok(r)
+    let v1 = rows.into_iter().collect::<Result<Vec<String>, _>>()?;
+    if v1.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(v1))
+    }
 }
-fn user_exists<P: AsRef<Path>>(username: &str, dbpath: P) -> Result<bool, UserError> {
+pub fn user_exists<P: AsRef<Path>>(username: &str, dbpath: P) -> Result<bool, UserError> {
     let uservec = user_list(dbpath)?;
     match uservec {
         Some(x) if x.contains(&username.to_string()) => Ok(true),
-        _ => {
-            println!("User {} doesn't exist", username);
-            Ok(false)
-        }
+        _ => Ok(false),
     }
 }
 fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
@@ -188,7 +184,7 @@ pub fn authenticate<P: AsRef<Path>>(
         let salt = &expect_value[(&expect_value.chars().count() - 16)..];
         let actual_value = create_pass_hash(&hkreq.username, &hkreq.password, salt);
         if actual_value == expect_value {
-            println!("Authentication succeeded for user {}.", &hkreq.username);
+            log::info!("Authentication succeeded for user {}.", &hkreq.username);
             Ok(())
         } else {
             Err(UserError::Authentication(format!(
@@ -231,11 +227,3 @@ pub fn create_user_from_conf<P: AsRef<Path>>(account: Account, dbpath: P) {
         println!("用户名或密码为空")
     }
 }
-//extract salt
-// #[test]
-// fn test_crt_pass_hash(){
-
-//   let h=  create_pass_hash("1","2");
-// let s=&h[(h.chars().count()-16)..];
-// println!("{}",s);
-// }
