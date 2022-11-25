@@ -6,18 +6,19 @@ use rand::{self, Rng};
 use rusqlite::Row;
 use rusqlite::{Connection, OptionalExtension, Result};
 use sha2::{Digest, Sha256};
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Session {
+    /// session key
     skey: String,
+    /// hostkey
+    hkey: String,
     username: String,
     userdir: PathBuf,
 }
-
 impl Session {
     pub fn skey(&self) -> String {
         self.skey.to_owned()
@@ -45,15 +46,12 @@ impl Session {
             .build()?;
         Ok(col_result)
     }
-    fn from<P: Into<PathBuf>>(skey: &str, username: &str, user_path: P) -> Session {
-        Session {
-            skey: skey.to_owned(),
-            username: username.to_owned(),
-            userdir: user_path.into(),
-        }
-    }
-    /// create and return session from username and user path
-    pub fn new(username: &str, user_path: PathBuf) -> Result<Session, ApplicationError> {
+    /// create session from username and user path and return it.
+    pub fn new(
+        username: &str,
+        user_path: PathBuf,
+        hkey: &str,
+    ) -> Result<Session, ApplicationError> {
         let mut hasher = Sha256::new();
         // rand f64 [0,1]
         let mut rng = rand::thread_rng();
@@ -66,6 +64,7 @@ impl Session {
         }
         Ok(Session {
             skey: skey[skey.chars().count() - 8..].to_owned(),
+            hkey: hkey.to_string(),
             username: username.to_owned(),
             userdir: user_path,
         })
@@ -75,7 +74,7 @@ impl Session {
         self.username.to_owned()
     }
 }
-/// load session either from `hkey` or from `skey` (these two keys are from being parsed from client request)
+/// load session either from `hkey` or from `skey` (these two keys are from client requests)
 ///
 /// if all of them are empty (it holds on sync method /hostkey),return Error
 pub fn load_session(
@@ -110,46 +109,48 @@ pub fn load_session(
         }
     }
 }
-// return Session if skey value from session manager equals to one from client
-fn map_skey_session(session: Session, skey: &str) -> Result<Session, ApplicationError> {
-    if skey == session.skey {
-        Ok(session)
+/// return [`Session`] if `hkey` value from session manager equals to one from client
+fn match_hkey(session: &Session, hkey: &str) -> Result<Session, ApplicationError> {
+    if hkey == session.hkey {
+        Ok(session.to_owned())
     } else {
         Err(ApplicationError::SessionError(
-            "session keys are not equal".to_string(),
+            "session keys are not equal to each other".to_string(),
         ))
     }
 }
 
-fn to_vec(row: &Row) -> Result<Vec<String>, rusqlite::Error> {
-    Ok(vec![row.get(0)?, row.get(1)?, row.get(2)?])
-}
-fn query_vec(
-    sql: &str,
-    conn: &Connection,
-    query_entry: &str,
-) -> Result<Option<Vec<String>>, ApplicationError> {
-    let mut stmt = conn.prepare(sql)?;
-    let r = stmt.query_row([query_entry], to_vec).optional()?;
-    Ok(r)
-}
-#[derive(Debug, Clone)]
-pub struct SessionManager {
-    /// k:hkey
-    pub sessions: HashMap<String, Session>,
-}
-
-impl Default for SessionManager {
-    fn default() -> Self {
-        Self::new()
+// return Session if skey value from session manager equals to one from client
+fn match_skey(session: &Session, skey: &str) -> Result<Session, ApplicationError> {
+    if skey == session.skey {
+        Ok(session.to_owned())
+    } else {
+        Err(ApplicationError::SessionError(
+            "session keys are not equal to each other".to_string(),
+        ))
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SessionManager {
+    /// k:hkey
+    pub sessions: Vec<Session>,
+}
+fn to_session(row: &Row) -> Result<Session, rusqlite::Error> {
+    let hkey = row.get(0)?;
+    let skey = row.get(1)?;
+    let username = row.get(2)?;
+    let userdir: PathBuf = row.get::<_, String>(3)?.into();
+    Ok(Session {
+        skey,
+        hkey,
+        username,
+        userdir,
+    })
+}
 impl SessionManager {
     pub fn new() -> SessionManager {
-        SessionManager {
-            sessions: HashMap::new(),
-        }
+        SessionManager::default()
     }
 
     pub fn load_from_skey(
@@ -157,51 +158,43 @@ impl SessionManager {
         skey: &str,
         session_db_conn: &Connection,
     ) -> Result<Session, ApplicationError> {
-        let mut sesss = self
-            .clone()
+        let mut session = self
             .sessions
             .iter()
-            .filter_map(|(_, v)| map_skey_session(v.to_owned(), skey).ok())
+            .filter_map(|s| match_skey(s, skey).ok())
             .collect::<Vec<_>>();
-        if !sesss.is_empty() {
-            Ok(sesss.remove(0))
-        } else {
+        if session.is_empty() {
             // db ops
-            let sql = "SELECT hkey, username, path FROM session WHERE skey=?";
-            // var record must not be empty
-            let record = match query_vec(sql, session_db_conn, skey)? {
-                Some(r) => Ok(r),
+            let sql = "SELECT hkey,skey, username, path FROM session WHERE skey=?";
+            let session_result = session_db_conn
+                .query_row(sql, [skey], to_session)
+                .optional()?;
+            match session_result {
+                Some(s) => {
+                    self.sessions.push(s.clone());
+                    Ok(s)
+                }
                 None => Err(ApplicationError::SessionError(
-                    "session query result not found while load from skey".to_string(),
+                    "error while querying session db ,no such skey(session key) in db".to_string(),
                 )),
-            };
-            let mut rcd = record?;
-            // safe to unwrap,as record is not empty
-            let username = rcd.get(1).unwrap();
-            let path = rcd.get(2).unwrap();
-
-            let session = Session::from(skey, username, path);
-            // add into hashmap SessionManager
-            self.sessions
-                .borrow_mut()
-                .insert(rcd.remove(0), session.clone());
-            Ok(session)
+            }
+        } else {
+            Ok(session.remove(0))
         }
     }
     /// save session to session manager and write record into database
     pub fn save(
         &mut self,
-        hkey: String,
         session: Session,
         session_db_conn: &Connection,
     ) -> Result<(), ApplicationError> {
-        self.sessions.insert(hkey.clone(), session.clone());
+        self.sessions.push(session.clone());
         // db insert ops
         let sql = "INSERT OR REPLACE INTO session (hkey, skey, username, path) VALUES (?, ?, ?, ?)";
         session_db_conn.execute(
             sql,
             [
-                &hkey,
+                &session.hkey,
                 &session.skey,
                 &session.username,
                 &format!("{}", session.userdir.display()),
@@ -216,29 +209,28 @@ impl SessionManager {
         hkey: &str,
         session_db_conn: &Connection,
     ) -> Result<Session, ApplicationError> {
-        let sess = self.clone().sessions.remove(hkey);
+        let mut session = self
+            .sessions
+            .iter()
+            .filter_map(|s| match_hkey(s, hkey).ok())
+            .collect::<Vec<_>>();
 
-        if let Some(session) = sess {
-            Ok(session)
-        } else {
-            let sql1 = "SELECT skey, username, path FROM session WHERE hkey=?";
-            let record = match query_vec(sql1, session_db_conn, hkey)? {
-                Some(r) => Ok(r),
+        if session.is_empty() {
+            let sql = "SELECT hkey,skey, username, path FROM session WHERE hkey=?";
+            let session_result = session_db_conn
+                .query_row(sql, [hkey], to_session)
+                .optional()?;
+            match session_result {
+                Some(s) => {
+                    self.sessions.push(s.clone());
+                    Ok(s)
+                }
                 None => Err(ApplicationError::SessionError(
-                    "session query result not found while load from hkey".to_string(),
+                    "error while querying session db ,no such hostkey in db".to_string(),
                 )),
-            };
-            let rcd = record?;
-            // safe to unwrap,as record is not empty
-            let skey = rcd.get(0).unwrap();
-            let username = rcd.get(1).unwrap();
-            let path = rcd.get(2).unwrap();
-
-            let session = Session::from(skey, username, path);
-            self.borrow_mut()
-                .sessions
-                .insert(hkey.to_owned(), session.clone());
-            Ok(session)
+            }
+        } else {
+            Ok(session.remove(0))
         }
     }
 }

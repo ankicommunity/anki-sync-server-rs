@@ -136,5 +136,7 @@ download error
 reproduce: upload to server,log out,delete deck,log in,sync.exit client and
 server,launch both,and sync ,download error.
 
+add actix-web middlewares
+1.How to append username to log info?
+2. error handling about response code
 
-How to append username to log info?
