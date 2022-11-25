@@ -167,19 +167,16 @@ impl SessionManager {
             // db ops
             let sql = "SELECT hkey,skey, username, path FROM session WHERE skey=?";
             let session_result = session_db_conn
-                .query_row(&sql, [skey], to_session)
+                .query_row(sql, [skey], to_session)
                 .optional()?;
             match session_result {
                 Some(s) => {
                     self.sessions.push(s.clone());
                     Ok(s)
                 }
-                None => {
-                    return Err(ApplicationError::SessionError(
-                        "error while querying session db ,no such skey(session key) in db"
-                            .to_string(),
-                    ))
-                }
+                None => Err(ApplicationError::SessionError(
+                    "error while querying session db ,no such skey(session key) in db".to_string(),
+                )),
             }
         } else {
             Ok(session.remove(0))
@@ -221,7 +218,7 @@ impl SessionManager {
         if session.is_empty() {
             let sql = "SELECT hkey,skey, username, path FROM session WHERE hkey=?";
             let session_result = session_db_conn
-                .query_row(&sql, [hkey], to_session)
+                .query_row(sql, [hkey], to_session)
                 .optional()?;
             match session_result {
                 Some(s) => {

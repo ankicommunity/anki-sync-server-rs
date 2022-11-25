@@ -43,11 +43,12 @@ async fn main() -> Result<(), ()> {
     create_auth_db(&auth_path).expect("Failed to create auth database.");
 
     // Manage account if needed, exit if this is the case
-    if !USERNAME.is_empty() && !PASSWORD.is_empty() {
-        if !user_exists(&USERNAME, &auth_path).expect("user existing error") {
-            add_user(&[USERNAME.to_string(), PASSWORD.to_string()], &auth_path)
-                .expect("adding user from env vars fail");
-        }
+    if !USERNAME.is_empty()
+        && !PASSWORD.is_empty()
+        && !user_exists(&USERNAME, &auth_path).expect("user existing error")
+    {
+        add_user(&[USERNAME.to_string(), PASSWORD.to_string()], &auth_path)
+            .expect("adding user from env vars fail");
     }
     if let Some(cmd) = matches.cmd.as_ref() {
         parse_args::manage_user(cmd, &auth_path);
