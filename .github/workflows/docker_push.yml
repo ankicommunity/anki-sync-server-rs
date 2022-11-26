@@ -184,6 +184,16 @@ jobs:
           name: binary
           path: aarch64-unknown-linux-musl-ankisyncd
           retention-days: 1
+      - uses: actions/upload-artifact@v2
+        with:
+          name: binary
+          path: scripts/ankisyncd.toml
+          retention-days: 1
+      - uses: actions/upload-artifact@v2
+        with:
+          name: binary
+          path: scripts/entrypoint.sh
+          retention-days: 1
 
   docker:
     needs: [x64,arm64]
