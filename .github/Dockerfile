@@ -14,6 +14,8 @@ COPY . .
 # RUN cp ./target/release/ankisyncd . && cargo clean
 
 #RUN apt-get update && apt-get install -y extra-runtime-dependencies && rm -rf /var/lib/apt/lists/*
+RUN cp /app/binary/ankisyncd.toml /ankisyncd.toml
+RUN cp /app/binary/entrypoint.sh /entrypoint.sh
 RUN mv /app/binary/`arch`-unknown-linux-musl-ankisyncd /usr/local/bin/ankisyncd
 RUN chmod +x /usr/local/bin/ankisyncd 
 # WORKDIR /app means, when you log into the shell of container，
@@ -22,8 +24,7 @@ RUN chmod +x /usr/local/bin/ankisyncd
 # https://linuxhint.com/dockerfile_volumes/
 # persist data with a named volume https://docs.docker.com/get-started/05_persisting_data/
 VOLUME /app
-COPY  /app/binary/ankisyncd.toml /ankisyncd.toml
-COPY  /app/binary/entrypoint.sh /entrypoint.sh
+
 RUN chmod +x /entrypoint.sh
 CMD ["sh", "/entrypoint.sh"]
 EXPOSE 27701
