@@ -84,6 +84,7 @@ jobs:
       - name: Build 
         run: | 
           export PATH="$HOME/x86_64-linux-musl-native/bin:$PATH"
+          export CC=$HOME/x86_64-linux-musl-native/gcc
           cargo build --target x86_64-unknown-linux-musl --release 
       
       - run: mv target/x86_64-unknown-linux-musl/release/ankisyncd x86_64-unknown-linux-musl-ankisyncd
@@ -164,13 +165,13 @@ jobs:
           fileName: "sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz"
           
       # - name: Copy sqlite lib to home
-        # run: cp sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz $HOME
+        # run: cp sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz $HOME
 
-          # tar -zxvf $HOME/sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz -C $HOME
+          # tar -zxvf $HOME/sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz -C $HOME
       - name: unpack  sqlite3
         run: |
-          tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz 
-          cp -r sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz/sql/ .
+          tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz
+          cp -r sqliteautoconf3390000_0.1.2_linux_arm64/sql/ .
   
       # build static-linked binary for armv6 (also suitable for aarch64)
       # export SQLITE3_LIB_DIR=$HOME/sql/lib
