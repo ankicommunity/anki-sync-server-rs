@@ -22,8 +22,8 @@ RUN chmod +x /usr/local/bin/ankisyncd
 # https://linuxhint.com/dockerfile_volumes/
 # persist data with a named volume https://docs.docker.com/get-started/05_persisting_data/
 VOLUME /app
-COPY  /app/scripts/ankisyncd.toml /ankisyncd.toml
-COPY  /app/scripts/entrypoint.sh /entrypoint.sh
+COPY  /app/ankisyncd.toml /ankisyncd.toml
+COPY  /app/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 CMD ["sh", "/entrypoint.sh"]
 EXPOSE 27701
