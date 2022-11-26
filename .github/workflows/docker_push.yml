@@ -8,57 +8,192 @@ on:
       - "*.*.*"
 
 jobs:
-  buildx:
+  x64:
+    name: Build x64
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
-
+    # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
     steps:
-      - name: Checkout code
+      - name: Check out code
         uses: actions/checkout@v2
-        
-      - name: Cache cargo
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo
 
-      - uses: actions-rs/toolchain@v1
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
-          target: ${{ matrix.target }}
           override: true
 
-      # clone and patch anki library  
+      # clone and patch anki library 
+      # need to disable bundled feature in rusqlite in anki lib,so copy after-modified cargo file 
       - name: Clone patch Anki
-        run: sh ./scripts/clone_patch_anki
-        
+        run: |
+          sh ./scripts/clone_patch_anki
+
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
           version: '3.9.1'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions-rs/cargo@v1
+      # - name: Install Protoc
+      #   run: |
+      #     PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+      #     curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+      #     mkdir -p $HOME/protoc
+      #     unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+          
+      - name: Add cargo taget x86_64
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - uses: robinraju/release-downloader@v1.4
         with:
-          use-cross: true
-          command: build
-          args: --release --target ${{ matrix.target }} 
+          repository: "dobefore/musl-cross"
+          tag: "0.1.0"
+          fileName: "x86_64-linux-musl-native.tgz"
+
+      - name: Copy musl-cross to home
+        run: cp  x86_64-linux-musl-native.tgz $HOME
+
+      - name: unpack cross-compile toolchains musl
+        run: tar -zxvf $HOME/x86_64-linux-musl-native.tgz -C $HOME
+      # # openssl
+      # - uses: robinraju/release-downloader@v1.4
+      #   with:
+      #     repository: "dobefore/cross-compile-openssl-musl"
+      #     tag: "1.1.1"
+      #     fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
+      # - name: Copy openssl lib to home
+      #   run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
+
+      # - name: unpack  openssl 
+      #   run: |
+      #     tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
+      #     cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
+      # sqlite3
+      # - uses: robinraju/release-downloader@v1.4
+      #   with:
+      #     repository: "dobefore/cross-compile-sqlite-musl"
+      #     tag: "0.1.2"
+      #     fileName: "sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz"
+          
+      # - name: unpack  sqlite3
+      #   run: |
+      #     tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz 
+      #     cp -r sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz/sql/ .
+  
+      - name: Build 
+        run: | 
+          export PATH="$HOME/x86_64-linux-musl-native/bin:$PATH"
+          cargo build --target x86_64-unknown-linux-musl --release 
       
-      - run: mv target/${{ matrix.target }}/release/ankisyncd ${{ matrix.target }}-ankisyncd
+      - run: mv target/x86_64-unknown-linux-musl/release/ankisyncd x86_64-unknown-linux-musl-ankisyncd
       
       - uses: actions/upload-artifact@v2
         with:
           name: binary
-          path: ${{ matrix.target }}-ankisyncd
+          path: x86_64-unknown-linux-musl-ankisyncd
+          retention-days: 1
+
+  arm64:
+    name: Build arm64
+    runs-on: ubuntu-latest
+    # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      # clone and patch anki library 
+      # need to disable bundled feature in rusqlite in anki lib,so copy after-modified cargo file 
+      - name: Clone patch Anki
+        run: |
+          sh ./scripts/clone_patch_anki
+          cp ./scripts/Cargo.toml anki/rslib/
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.9.1'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Install Protoc
+      #   run: |
+      #     PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+      #     curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+      #     mkdir -p $HOME/protoc
+      #     unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+          
+      - name: Add cargo taget armv6
+        run: rustup target add aarch64-unknown-linux-musl
+
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/musl-cross"
+          tag: "0.1.0"
+          fileName: "aarch64-linux-musl-cross.tgz"
+
+      - name: Copy musl-cross to home
+        run: cp  aarch64-linux-musl-cross.tgz $HOME
+
+      - name: unpack cross-compile toolchains musl
+        run: tar -zxvf $HOME/aarch64-linux-musl-cross.tgz -C $HOME
+      # # openssl
+      # - uses: robinraju/release-downloader@v1.4
+      #   with:
+      #     repository: "dobefore/cross-compile-openssl-musl"
+      #     tag: "1.1.1"
+      #     fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
+      # - name: Copy openssl lib to home
+      #   run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
+
+      # - name: unpack  openssl 
+      #   run: |
+      #     tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
+      #     cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
+      # sqlite3
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/cross-compile-sqlite-musl"
+          tag: "0.1.2"
+          fileName: "sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz"
+          
+      # - name: Copy sqlite lib to home
+        # run: cp sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz $HOME
+
+          # tar -zxvf $HOME/sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz -C $HOME
+      - name: unpack  sqlite3
+        run: |
+          tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz 
+          cp -r sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz/sql/ .
+  
+      # build static-linked binary for armv6 (also suitable for aarch64)
+      # export SQLITE3_LIB_DIR=$HOME/sql/lib
+          # export SQLITE3_INCLUDE_DIR=$HOME/sql/include
+          # export SQLITE3_STATIC=1
+      - name: Build 
+        run: | 
+          export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"
+          cargo build --target aarch64-unknown-linux-musl --release 
+  
+      # - name: Strip binaries (ankisyncd)
+      #   run: $HOME/aarch64-linux-musl-cross/bin/arm-linux-musleabihf-strip target/aarch64-unknown-linux-musl/release/ankisyncd
+      
+      - run: mv target/aarch64-unknown-linux-musl/release/ankisyncd aarch64-unknown-linux-musl-ankisyncd
+      
+      - uses: actions/upload-artifact@v2
+        with:
+          name: binary
+          path: aarch64-unknown-linux-musl-ankisyncd
           retention-days: 1
 
   docker:
-    needs: buildx
+    needs: [x64,arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
