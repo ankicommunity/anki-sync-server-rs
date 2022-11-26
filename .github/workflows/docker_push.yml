@@ -49,13 +49,13 @@ jobs:
         with:
           repository: "dobefore/musl-cross"
           tag: "0.1.0"
-          fileName: "x86_64-linux-musl-native.tgz"
+          fileName: "x86_64-linux-musl-cross.tgz"
 
       - name: Copy musl-cross to home
-        run: cp  x86_64-linux-musl-native.tgz $HOME
+        run: cp  x86_64-linux-musl-cross.tgz $HOME
 
       - name: unpack cross-compile toolchains musl
-        run: tar -zxvf $HOME/x86_64-linux-musl-native.tgz -C $HOME
+        run: tar -zxvf $HOME/x86_64-linux-musl-cross.tgz -C $HOME
       # # openssl
       # - uses: robinraju/release-downloader@v1.4
       #   with:
@@ -83,8 +83,7 @@ jobs:
   
       - name: Build 
         run: | 
-          export PATH="$HOME/x86_64-linux-musl-native/bin:$PATH"
-          export CC=$HOME/x86_64-linux-musl-native/gcc
+          export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
           cargo build --target x86_64-unknown-linux-musl --release 
       
       - run: mv target/x86_64-unknown-linux-musl/release/ankisyncd x86_64-unknown-linux-musl-ankisyncd
@@ -177,6 +176,10 @@ jobs:
           
       - name: Build 
         run: | 
+          export OPENSSL_LIB_DIR=$HOME/openssl/lib
+          export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
+          export OPENSSL_STATIC=true
+          
           export SQLITE3_LIB_DIR=$HOME/sql/lib
           export SQLITE3_INCLUDE_DIR=$HOME/sql/include
           export SQLITE3_STATIC=1
