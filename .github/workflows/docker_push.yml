@@ -32,7 +32,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
-          version: '3.9.1'
+          version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Install Protoc
@@ -104,7 +104,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
-          version: '3.9.1'
+          version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Install Protoc
@@ -156,6 +156,7 @@ jobs:
         run: |
           tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz
           cp -r sqliteautoconf3390000_0.1.2_linux_arm64/sql/ .
+          cp -r sql/ $HOME
   
       # build static-linked binary for armv6 (also suitable for aarch64)
           
@@ -168,7 +169,8 @@ jobs:
           export SQLITE3_LIB_DIR=$HOME/sql/lib
           export SQLITE3_INCLUDE_DIR=$HOME/sql/include
           export SQLITE3_STATIC=1
-          
+          ls
+          cp -r $HOME/sql/ . 
           export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"
           cargo build --target aarch64-unknown-linux-musl --release 
   
