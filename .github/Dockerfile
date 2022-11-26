@@ -15,6 +15,7 @@ COPY . /home
 
 #RUN apt-get update && apt-get install -y extra-runtime-dependencies && rm -rf /var/lib/apt/lists/*
 RUN mv /home/binary/`arch`-unknown-linux-musl-ankisyncd /usr/local/bin/ankisyncd
+RUN ls /home
 RUN chmod +x /usr/local/bin/ankisyncd 
 # WORKDIR /app means, when you log into the shell of container，
 # you will be in the /app directory of the container by default.
