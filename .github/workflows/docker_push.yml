@@ -56,19 +56,20 @@ jobs:
       #     mkdir -p $HOME/protoc
       #     unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
           
-      # # openssl
-      # - uses: robinraju/release-downloader@v1.4
-      #   with:
-      #     repository: "dobefore/cross-compile-openssl-musl"
-      #     tag: "1.1.1"
-      #     fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
-      # - name: Copy openssl lib to home
-      #   run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
+         # # openssl
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/cross-compile-openssl-musl"
+          tag: "1.1.1"
+          fileName: "openssl1.1.1f_1.1.1_linux_x64.tar.gz"
+      - name: Copy openssl lib to home
+        run: cp openssl1.1.1f_1.1.1_linux_x64.tar.gz $HOME
 
-      # - name: unpack  openssl 
-      #   run: |
-      #     tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
-      #     cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
+      - name: unpack  openssl 
+        run: |
+          tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_x64.tar.gz -C $HOME
+          cp -r $HOME/openssl1.1.1f_1.1.1_linux_x64/openssl/ $HOME
+          
       # sqlite3
       # - uses: robinraju/release-downloader@v1.4
       #   with:
@@ -83,6 +84,10 @@ jobs:
 
       - name: Build 
         run: | 
+          export OPENSSL_LIB_DIR=$HOME/openssl/lib
+          export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
+          export OPENSSL_STATIC=true
+          
           sudo apt install musl-tools
           export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
           cargo build --target x86_64-unknown-linux-musl --release 
