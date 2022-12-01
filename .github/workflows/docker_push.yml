@@ -34,7 +34,7 @@ jobs:
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          
+      
       - name: Add cargo taget x64
         run: rustup target add x86_64-unknown-linux-musl
         
@@ -80,9 +80,10 @@ jobs:
       #   run: |
       #     tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz.tar.gz 
       #     cp -r sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz/sql/ .
-  
+
       - name: Build 
         run: | 
+          sudo apt install musl-tools
           export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
           cargo build --target x86_64-unknown-linux-musl --release 
       
