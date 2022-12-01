@@ -34,7 +34,21 @@ jobs:
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Add cargo taget x64
+        run: rustup target add x86_64-unknown-linux-musl
+        
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/musl-cross"
+          tag: "0.1.0"
+          fileName: "x86_64-linux-musl-cross.tgz"
 
+      - name: Copy musl-cross to home
+        run: cp  x86_64-linux-musl-cross.tgz $HOME
+
+      - name: unpack cross-compile toolchains musl
+        run: tar -zxvf $HOME/x86_64-linux-musl-cross.tgz -C $HOME
       # - name: Install Protoc
       #   run: |
       #     PB_REL="https://github.com/protocolbuffers/protobuf/releases"
@@ -69,9 +83,10 @@ jobs:
   
       - name: Build 
         run: | 
-          cargo build  --release 
+          export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
+          cargo build --target x86_64-unknown-linux-musl --release 
       
-      - run: mv target/release/ankisyncd x86_64-unknown-linux-musl-ankisyncd
+      - run: mv target/x86_64-unknown-linux-musl/release/ankisyncd x86_64-unknown-linux-musl-ankisyncd
       
       - uses: actions/upload-artifact@v2
         with:
