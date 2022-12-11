@@ -46,23 +46,27 @@ You can also build from source code [Install](docs/INSTALL.md) or build docker i
 
 ### AnkiDroid
 
-Go to `Advanced -> Custom sync server` (Go to `Settings` -> `Sync` -> `Custom sync server` in  2.16 and above)
+Go to `Advanced -> Custom sync server` (Go to `Settings` -> `Sync` -> `Custom sync server` in  2.16 and newer versions)
 
 Unless you have set up a reverse proxy to handle encrypted connections, use `http` as the protocol. The port will be either the default `27701`, or whatever you have specified in `ankisyncd.toml` (if using a reverse proxy, whatever port you configured to accept the front-end connection).
 
-Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url` (Note: This is not the case any more in above version 2.16,include 2.16).
+Use the same base url for both the `Sync url` and the `Media sync url`, but append `/msync` to the `Media sync url`. Do **not** append `/sync` to the `Sync url` (Note: This is not the case any more in 2.16 and newer versions).
+
 Take IP address `192.0.0.0` for example and use default port `27701` with `http` protocol,the corresponsding urls are,
 
 Sync url:`http://192.0.0.0:27701`
+
 Media sync url: `http://192.0.0.0:27701/msync`
 
-In above version 2.16,
+In 2.16 and newer versions,
+
 Sync url:`http://192.0.0.0:27701/sync/`
+
 Media sync url: `http://192.0.0.0:27701/msync/`
 
 Even though the AnkiDroid login interface will request an email address, this is not actually required; it can simply be the username you configured with `ankisyncd user -a`.
 
-For https setup and support see [certificate setup](docs/CERTS.md) (Note: in 2.16 and above,Ankidroid could supprt http connection once more).
+For https setup and support see [certificate setup](docs/CERTS.md) (Note: in 2.16 and newer versions,Ankidroid could supprt http connection once more).
 See [reverse proxy setup](docs/REVERSE_PROXY.md) for setting up a reverse proxy in front of the sync server.
 
 ## How to contribute
@@ -82,8 +86,8 @@ When the server made its first appearance,we have done some tests,details see [T
 Ankidyncd supports two Env variables to add users,`ANKISYNCD_USERNAME`,`ANKISYNCD_PASSWORD`.
 |Key|Value|
 |-|-|
-|ANKISYNCD_USERNAME|username,non-empty|
-|ANKISYNCD_PASSWORD|password,non-empty|
+|ANKISYNCD_USERNAME|username,non-empty if set|
+|ANKISYNCD_PASSWORD|password,non-empty if set|
 
 ### Optional Server Configuration
 If you want to change the folder where sync data reside or change the listening port,you can modify the configuration file `ankisyncd.toml`,and then run server,
