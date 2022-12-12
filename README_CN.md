@@ -13,7 +13,7 @@
 
 ## 服务端的简单的使用说明
 ### 安装 (通过二进制可执行文件)
-1. 下载二进制文件，地址[releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) ，注意下载与您的计算机平台相符的文件，比如说，对于Windows的用户来说，下载文件名带有`windows_x86_64`的文件。下载后解压缩。
+1. 下载二进制文件，地址[releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) ，注意下载与您的计算机平台相符的文件，比如说，对于Windows的用户来说，下载文件名带有`windows_x86_64`的文件。下载后解压缩并进入解压后的文件夹。
 2. 添加账号（注：下面提到的`username`，`password`为您想设置的用户名和密码）。
 
 对于Linux、macOS的用户，运行命令：
@@ -48,13 +48,17 @@
 除非设置反向代理来处理加密连接，我们使用`HTTP`协议。端口可以是默认的`27701`或者可以在配置文件`ankisyncd.toml`中设置您中意的端口。
 
 安卓端提供了和Anki `endpoint`类似的两个地址来同步收藏数据(Collection)和媒体文件(Media),分别是`同步地址(Sync url)` and the `媒体文件同步地址(Media sync url)`,但是在新版2.16中出现了些微的改变。
+
 举个例子，假设我们的服务器IP地址为``192.0.0.0``,而且我们使用HTTP协议，`27701`作为端口，相应的地址是，
 
 同步地址(Sync url):`http://192.0.0.0:27701`
+
 媒体文件同步地址(Media sync url): `http://192.0.0.0:27701/msync`
 
 在2.16及以上版本中,
+
 同步地址(Sync url):`http://192.0.0.0:27701/sync/`
+
 媒体文件同步地址(Media sync url): `http://192.0.0.0:27701/msync/`
 
 想要支持`https`，查看文件[certificate setup](docs/CERTS.md) （注：2.16版本允许不安全HTTP连接）；反向代理如何设置，查看文件[reverse proxy setup](docs/REVERSE_PROXY.md)。
@@ -66,8 +70,8 @@
 支持通过换届变量添加账号啦。
 |键|值|
 |-|-|
-|ANKISYNCD_USERNAME|用户名,非空|
-|ANKISYNCD_PASSWORD|密码,非空|
+|ANKISYNCD_USERNAME|用户名,如果设置则非空|
+|ANKISYNCD_PASSWORD|密码,如果设置则非空|
 ### 可选的服务端配置
 注意，这并不是必选项，这一步可以略过。如果您想改变服务端同步数据存储位置或者改变监听端口，可以修改我们提供的配置文件`ankisyncd.toml`,它也在解压缩后的文件夹里面，最后运行如下命令（注：下面的命令适用于linux/和macOS，使用Windows的用户将`ankisyncd`替换成`ankisyncd.exe`,配置文件`ankisyncd.toml`的具体路径根据您计算机配置文件的实际路径而定），
 ```
@@ -79,4 +83,4 @@ See [LICENSE](LICENSE)
 
 ## 引用
 本项目的建立，与另外两个项目密不可分，它们是 [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) ,
-[ankitects/anki](https://github.com/ankitects/anki),尤其是`anki`,我们使用了它的Collection同步API，所以，如果我们不在能够访问到这个API，那么这个项目就停摆了。
+[ankitects/anki](https://github.com/ankitects/anki),我们几乎复刻了`anki-sync-server`中的媒体同步的实现逻辑；而对于`Anki`,我们使用了它的Collection同步API，所以，如果我们不在能够访问到这个API，那么这个项目就停摆了。
