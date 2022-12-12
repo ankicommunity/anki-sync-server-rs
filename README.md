@@ -1,4 +1,5 @@
 <div align="center">
+
 # anki-sync-server-rs
 
 [![License](https://img.shields.io/github/license/ankicommunity/anki-sync-server-rs)](https://github.com/ankicommunity/anki-sync-server-rs/blob/master/LINCENSE)[![Github status](https://img.shields.io/github/checks-status/ankicommunity/anki-sync-server-rs/master?label=github%20status)](https://github.com/ankicommunity/anki-sync-server-rs/actions)[![Github contributors](https://img.shields.io/github/contributors/ankicommunity/anki-sync-server-rs?label=github%20contributors)](https://github.com/ankicommunity/anki-sync-server-rs/graphs/contributors)[![DockerHub version](https://img.shields.io/docker/v/ankicommunity/anki-sync-server-rs?label=dockerhub%20version&sort=date)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)[![DockerHub pulls](https://img.shields.io/docker/pulls/ankicommunity/anki-sync-server-rs)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)[![DockerHub stars](https://img.shields.io/docker/stars/ankicommunity/anki-sync-server-rs)](https://hub.docker.com/repository/docker/ankicommunity/anki-sync-server-rs)
@@ -14,17 +15,18 @@ This is a rust (still sqlite c library backed) take on anki sync server (for a m
 
 ## Quickstart guide
 ### Installing (binary)
-1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, each platform has its corresponding tag (e.g. `windows_x86_64` for Windows 64bit,details see [support platform](docs/PLATFORM.md) ) .
+1. Grab binary from github [releases](https://github.com/ankicommunity/anki-sync-server-rs/releases) and unpack it, each platform has its corresponding tag (e.g. `windows_x86_64` for Windows 64bit,details see [support platform](docs/PLATFORM.md) ) ,enter the decompressed folder.
 2. Add user
+
 For linux users or macOS users,run,
 ```
  ./ankisyncd user --add username password
 ```
-for Windows users,open a terminal in the same folder where the binary is in and run,
+for Windows users,open a terminal in the folder and run,
 ```
  ./ankisyncd.exe user --add username password
 ```
-If you want to perform other operations ,such as deleting users or changing password of one user,run with help argument for more details,
+If you want to perform other operations ,such as deleting users or changing the password of one user,run with the `--help` flag for more details,
 ```
  ./ankisyncd user --help
 ```
@@ -34,13 +36,13 @@ If you want to perform other operations ,such as deleting users or changing pass
 ### Installing (Docker)
 details see [Docker](docs/CONTAINER.md)
 
-You can also build from source code [Install](docs/INSTALL.md) or build docker image from source [DockerBuild](docs/CONTAINER.md).
+You can also build the binary from source code [Install](docs/INSTALL.md) or build a docker image from the source [DockerBuild](docs/CONTAINER.md).
 ## Set up Anki (Clients)
 ### Anki 2.1(install add-on from ankiweb)
 
 1. Go to `Tools -> Add-ons`
-2. On the add-on window, click on `Get Add-ons` and fill in the textbox with the code `358444159`
-3. You get add-on `custom sync server redirector`, choose it. Then click `config` on the bottom right
+2.  click on the button labeled `Get Add-ons` and  enter the code `358444159`.
+3. You get add-on `custom sync server redirector`, choose it. Then click on the `config` button in the bottom right corner.
 4. Apply your server IP address
 5. Restart Anki
 
@@ -83,14 +85,14 @@ See [LICENSE](LICENSE)
 When the server made its first appearance,we have done some tests,details see [TEST](docs/TEST_SERVER_CLIENT.md)
 ## Configuration
 ### Env vars
-Ankidyncd supports two Env variables to add users,`ANKISYNCD_USERNAME`,`ANKISYNCD_PASSWORD`.
+Ankidyncd supports setting environment variables to add accounts,`ANKISYNCD_USERNAME`,`ANKISYNCD_PASSWORD`.
 |Key|Value|
 |-|-|
 |ANKISYNCD_USERNAME|username,non-empty if set|
 |ANKISYNCD_PASSWORD|password,non-empty if set|
 
 ### Optional Server Configuration
-If you want to change the folder where sync data reside or change the listening port,you can modify the configuration file `ankisyncd.toml`,and then run server,
+If you want to change the location where sync data is stored, or change the listening port,you can modify the configuration file `ankisyncd.toml`,and then run server,
 ```
 ./ankisyncd  --config /path/to/ankisyncd.toml
 ```
@@ -98,4 +100,4 @@ If you want to change the folder where sync data reside or change the listening 
 ## REFERENCE
 ankisyncd architecture or apis depend on [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) and
 [ankitects/anki](https://github.com/ankitects/anki).
-Sync APIs are initially based on anki/rslib 2.1.46.Note: This project is heavily dependent on upstream project `Anki`,that is,if the project Anki is no longer accessible,this project might be malfunctional and abandoned.
+Sync APIs are initially based on anki/rslib 2.1.46.We almost replicated the media synchronization implementation logic in `anki-sync-server`.And this project is heavily dependent on upstream project `Anki`,that is,if the project Anki is no longer accessible,this project might be malfunctional and abandoned.
