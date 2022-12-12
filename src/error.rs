@@ -51,15 +51,15 @@ impl ResponseError for ApplicationError {
         match self {
             ApplicationError::UserError(e) => {
                 // found in anki/rslib/src/error/network.rs
-                log::info!("{}", e.to_string());
+                log::error!("{}", e.to_string());
                 HttpResponse::Forbidden().finish()
             }
             ApplicationError::UrlNotFound(e) => {
-                log::info!("{e}");
+                log::error!("{e}");
                 HttpResponse::NotFound().finish()
             }
             e => {
-                log::info!("{}", e.to_string());
+                log::error!("{}", e.to_string());
                 HttpResponse::InternalServerError().finish()
             }
         }
