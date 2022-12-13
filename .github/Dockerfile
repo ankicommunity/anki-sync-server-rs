@@ -1,7 +1,7 @@
 FROM debian:stable-slim 
 WORKDIR /app
 # copy from host to container
-COPY binary .
+COPY binary binary
 
 RUN cp /app/binary/ankisyncd.toml /ankisyncd.toml && cp /app/binary/ankisyncd.toml /app/ankisyncd.toml && cp /app/binary/entrypoint.sh /entrypoint.sh
 RUN mv /app/binary/`arch`-unknown-linux-musl-ankisyncd /usr/local/bin/ankisyncd
