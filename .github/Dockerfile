@@ -3,9 +3,9 @@ WORKDIR /app
 # copy from host to container
 COPY binary .
 
-RUN cp /app/binary/ankisyncd.toml /app/binary/entrypoint.sh /
+RUN cp /app/binary/ankisyncd.toml /ankisyncd.toml && cp /app/binary/ankisyncd.toml /app/ankisyncd.toml && cp /app/binary/entrypoint.sh /entrypoint.sh
 RUN mv /app/binary/`arch`-unknown-linux-musl-ankisyncd /usr/local/bin/ankisyncd
-RUN chmod +x /usr/local/bin/ankisyncd && cp /app/binary/ankisyncd.toml /app && rm -fr binary
+RUN chmod +x /usr/local/bin/ankisyncd  && rm -fr binary
 # WORKDIR /app means, when you log into the shell of container，
 # you will be in the /app directory of the container by default.
 # https://linuxhint.com/dockerfile_volumes/
