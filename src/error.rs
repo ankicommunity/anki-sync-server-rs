@@ -54,6 +54,12 @@ impl ResponseError for ApplicationError {
                 log::error!("{}", e.to_string());
                 HttpResponse::Forbidden().finish()
             }
+            ApplicationError::SessionError(e) => {
+                // found in anki/rslib/src/error/network.rs
+                log::error!("{}", e.to_string());
+                log::error!("Please log out and log in again with new account");
+                HttpResponse::Forbidden().finish()
+            }
             ApplicationError::UrlNotFound(e) => {
                 log::error!("{e}");
                 HttpResponse::NotFound().finish()
