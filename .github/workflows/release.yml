@@ -229,6 +229,7 @@ jobs:
         uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         uses: actions-rs/cargo@v1
