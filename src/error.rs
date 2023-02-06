@@ -43,6 +43,10 @@ pub enum ApplicationError {
     InternalServerError(String),
     #[error("request url not found: {0}")]
     UrlNotFound(String),
+    #[error("creating an instance of SimpleServer fails: {0}")]
+    SimpleServer(String),
+    #[error("request url not found: {0}")]
+    HttpError(#[from] anki::sync::error::HttpError),
 }
 
 /// Actix Web uses `ResponseError` for conversion of errors to a response

@@ -143,3 +143,59 @@ add actix-web middlewares
 return fordden code when session error occurs when users try to log in though they have already
 logged in with an existing account,which will return 500. 
 
+Work to do
+one. pull from anki and ankisyncd-rs OK
+
+two. create new brahch ok 
+create new anki patch
+1. get current commit ID: c8275257ce4f507cf3292d6d4d7185d05088e310
+2. make changes OK
+3. get current commit ID: 41d4b0ea08bba88e114c0ad11ad8038d1b48a00f
+4. diff: 
+
+create a new  rs file in which test new api,try to replace Router with actix-web
+1. try to compile anki/rslib,error arises;
+ Compiling anki_i18n v0.0.0 (D:\anki-sync-server-rs\anki\rslib\i18n)
+error: failed to run custom build command for `anki_i18n v0.0.0 
+(D:\software\vscode_project\anki_sync\anki-sync-server-rs\anki\rslib\i18n)`
+  thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: Os 
+  { code: 3, kind: NotFound, message: "系统找不到指定的路径。" }', 
+  anki\rslib\i18n\build\gather.rs:68:37
+fixed by commenting function add_translation_root in rslib/i18n/build/gather.rs
+
+  There are so many obstacles trying to comply with actix-web,as anki uses axum.
+  So better to switch to axum,yet it would approximate to the fact that I have 
+  almost copied the whole work!I will be ashamed of myself.
+
+After inspecting protocol part of sync,it is possible to replace axum with acti-web.
+Now,two problems arise:
+1. add a trait that accept future closure,reference to actix-web 
+
+2. construct anki struct SyncRequest from request,involves adding actix-web's middleware to handle this.
+Firstly,only finish part of collection sync ,disregard media sync.OK
+add struct wrapper for SyncRequest, OK
+start constructing response : do some modifications before return response.OK
+finish nested routes of actix-web OK
+
+3. attack the problem about switching to self-make  method host_key
+make a self-made method hostkey but encoounter other problem. OK
+
+4. load all users from auth database before launching the server  OK
+
+5. collection sync handler is not used nad the server just return 500 code OK
+I think i find the reason why it doesn't work. Because the handler has a argument ehich
+is a web::data type and should be constructed and passed before starting the server.
+I remove that argument and it works. It is too bad that it takes me too long to waste precious
+time on the obvious error.
+
+6. other media sync methods except for begin are not working OK
+check whether the two begin methods are used in the same time begin method with android seems ok
+uploadChanges error,maybe data is not fully received? So I change method by write_all 
+ingore stream read error in order to make compitable with media get method 
+
+7. collection exceeds size limit. OK
+on clinet side there is no need to bother.As it will ignore this if endpoint is not http://ankiweb....
+we can increase this limit by setting env var MAX_SYNC_PAYLOAD_MEGS on the server side
+
+Three.uodate readme 
+Four. update version to 1.0.0 OK

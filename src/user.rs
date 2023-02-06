@@ -1,8 +1,8 @@
 #[cfg(feature = "account")]
 use crate::config::Account;
-use crate::db::fetchone;
+
 use crate::parse_args::UserCommand;
-use anki::sync::http::HostKeyRequest;
+
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
@@ -170,34 +170,11 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
     let pass_hash = format!("{:x}{}", result, salt);
     pass_hash
 }
-
-pub fn authenticate<P: AsRef<Path>>(
-    hkreq: &HostKeyRequest,
-    auth_db_path: P,
-) -> Result<(), UserError> {
-    let auth_db = auth_db_path.as_ref();
-    let conn = Connection::open(auth_db)?;
-    let sql = "SELECT hash FROM auth WHERE username=?";
-    let db_hash: Option<String> = fetchone(&conn, sql, Some(&hkreq.username))?;
-    conn.close()?;
-    if let Some(expect_value) = db_hash {
-        let salt = &expect_value[(&expect_value.chars().count() - 16)..];
-        let actual_value = create_pass_hash(&hkreq.username, &hkreq.password, salt);
-        if actual_value == expect_value {
-            log::info!("Authentication succeeded for user {}.", &hkreq.username);
-            Ok(())
-        } else {
-            Err(UserError::Authentication(format!(
-                "Authentication failed for user {}",
-                &hkreq.username
-            )))
-        }
-    } else {
-        Err(UserError::Authentication(format!(
-            "Authentication failed for nonexistent user {}",
-            &hkreq.username
-        )))
-    }
+/// extract salt from a hash which is the last 16 characters
+pub fn compute_hash(username: &str, password: &str, hash: &str) -> String {
+    let salt = &hash[(hash.chars().count() - 16)..];
+    
+    create_pass_hash(username, password, salt)
 }
 /// here the account argument is read from cnfig file.
 ///

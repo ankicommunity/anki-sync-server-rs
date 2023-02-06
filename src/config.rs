@@ -58,9 +58,9 @@ impl Config {
         format!("{}/auth.db", self.paths.root_dir)
     }
 
-    pub fn session_db_path(&self) -> String {
-        format!("{}/session.db", self.paths.root_dir)
-    }
+    // pub fn session_db_path(&self) -> String {
+    //     format!("{}/session.db", self.paths.root_dir)
+    // }
 
     pub fn encryption_config(&self) -> Option<&ConfigCert> {
         self.encryption.as_ref()
