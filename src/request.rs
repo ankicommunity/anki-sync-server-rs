@@ -21,28 +21,25 @@ use std::{
     future::{ready, Ready},
     rc::Rc,
 };
-use std::{
-    net::IpAddr,
-    sync::{Arc},
-};
+use std::{net::IpAddr, sync::Arc};
 
 use crate::{
-    user::{compute_hash, UserError},
     error::ApplicationError,
+    user::{compute_hash, UserError},
 };
 /// Get the full field data as text.
 async fn text(mut field: actix_multipart::Field) -> String {
     // Field in turn is stream of *Bytes* object
     let mut c: String = String::new();
     while let Some(chunk) = field.try_next().await.unwrap() {
-     c = String::from_utf8(chunk.to_vec()).unwrap();
+        c = String::from_utf8(chunk.to_vec()).unwrap();
     }
     c
 }
 async fn bytes(mut field: actix_multipart::Field) -> Vec<u8> {
     let mut b = vec![];
     while let Some(chunk) = field.try_next().await.unwrap() {
-    b.write_all(&chunk).await.unwrap();
+        b.write_all(&chunk).await.unwrap();
         //  b.write_all(&chunk);
     }
     b
@@ -58,8 +55,8 @@ pub(super) async fn from_multipart<T>(
     let mut compressed = false;
     let mut data = None;
     // this will cause error when client requesting a media begin get request,so we disregard error condition
-    while let Ok(Some(field))= multipart.try_next().await {
-     match field.name() {
+    while let Ok(Some(field)) = multipart.try_next().await {
+        match field.name() {
             "c" => {
                 // normal syncs should always be compressed, but media syncs may compress the
                 // zip instead
@@ -75,7 +72,7 @@ pub(super) async fn from_multipart<T>(
             _ => {}
         };
     }
-  
+
     let data = {
         let data = data.unwrap_or_default();
         if data.is_empty() {
@@ -119,7 +116,7 @@ pub(super) async fn from_header_and_stream<T>(
     }
 }
 
-#[derive( Clone)]
+#[derive(Clone)]
 pub struct SyncRequestW(pub SyncRequest<Vec<u8>>);
 // #[derive(Clone)]
 // pub struct SyncRequestWrapper<T>(pub anki::sync::request::SyncRequest<T>);
@@ -131,7 +128,7 @@ pub struct SyncRequestWrapperService<S> {
 impl<S, B> Service<ServiceRequest> for SyncRequestWrapperService<S>
 where
     // S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
-S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static,
 {
@@ -147,15 +144,15 @@ S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'stat
     // readiness checks to a named struct field
     dev::forward_ready!(service);
 
-    fn call(&self,mut req: ServiceRequest) -> Self::Future {
+    fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = self.service.clone();
         Box::pin(async move {
             // let r:anki::sync::media::begin::SyncBeginQuery=serde_json::from_str( req.query_string()).unwrap();
             // let headers = req.headers();
-let pl=req.take_payload();
-        // let (req,pl)=req.into_parts();
+            let pl = req.take_payload();
+            // let (req,pl)=req.into_parts();
             let headers = req.headers();
-          let ip= req.peer_addr();
+            let ip = req.peer_addr();
             let ip: Option<std::net::IpAddr> = match ip {
                 Some(s) => Some(s.ip()),
                 None => {
@@ -175,14 +172,14 @@ let pl=req.take_payload();
                         serde_json::from_str(sync_headers.to_str().ok().unwrap())
                             .ok()
                             .unwrap();
-            // let pl = req.take_payload();
+                    // let pl = req.take_payload();
                     let sr =
                         from_header_and_stream::<Vec<u8>>(sync_header.unwrap(), pl, ip.unwrap())
                             .await;
                     sr
                 }
                 None => {
-            // let pl = req.take_payload();
+                    // let pl = req.take_payload();
                     // If SYNC_HEADER_NAME is absent,
                     let pl = actix_multipart::Multipart::new(headers, pl);
                     let sr = from_multipart::<Vec<u8>>(ip.unwrap(), pl).await;
@@ -197,11 +194,11 @@ let pl=req.take_payload();
 }
 #[derive(Clone, Debug)]
 pub struct SyncRequestWrapper;
-impl<S:'static, B> Transform<S, ServiceRequest> for SyncRequestWrapper
+impl<S: 'static, B> Transform<S, ServiceRequest> for SyncRequestWrapper
 where
-S::Future: 'static,
+    S::Future: 'static,
     B: 'static,
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> ,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
@@ -254,4 +251,3 @@ pub async fn host_key(
         .into()),
     }
 }
-

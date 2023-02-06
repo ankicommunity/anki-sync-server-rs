@@ -2,17 +2,16 @@
 use crate::config::Config;
 use crate::db::fetch_users;
 
-use crate::{request, error::ApplicationError};
+use crate::{error::ApplicationError, request};
 
+use crate::app_config;
 use crate::routes::{
-    collecction_sync_handler,  media_sync_handler, media_begin_get, media_begin_post,
+    collecction_sync_handler, media_begin_get, media_begin_post, media_sync_handler,
 };
 use actix_web::get;
-use crate::{app_config};
 use actix_web::web;
-use actix_web::{HttpResponse, Result};
 use actix_web::{middleware, App, HttpServer};
-
+use actix_web::{HttpResponse, Result};
 
 use anki::sync::http_server::media_manager::ServerMediaManager;
 
@@ -28,16 +27,18 @@ use std::sync::Mutex;
 pub fn config_app(cfg: &mut web::ServiceConfig) {
     cfg.service(
         // web::scope("/sync").service(
-            web::resource("/sync/{method}")
-                .wrap(request::SyncRequestWrapper)
-                .to(collecction_sync_handler),
+        web::resource("/sync/{method}")
+            .wrap(request::SyncRequestWrapper)
+            .to(collecction_sync_handler),
         // ),
     )
     .service(
         web::scope("/msync")
             .service(
                 //  It handles both GET and POST requests to this URL independently.
-                web::resource("/begin").route(web::get().to(media_begin_get)).wrap(request::SyncRequestWrapper)
+                web::resource("/begin")
+                    .route(web::get().to(media_begin_get))
+                    .wrap(request::SyncRequestWrapper)
                     .route(web::post().to(media_begin_post)),
             )
             .service(
@@ -59,7 +60,7 @@ fn set_users(
         users.insert(
             hash,
             User {
-    name,
+                name,
                 col: None,
                 sync_state: None,
                 media,
@@ -99,10 +100,8 @@ pub async fn welcome() -> Result<HttpResponse> {
         .content_type("text/plain")
         .body("Anki Sync Server"))
 }
-pub async fn run(
-    config: &Config,
-) -> std::result::Result<(), ApplicationError> {
-     // State(server): State<P>, here state is similiar to actix-web's Data
+pub async fn run(config: &Config) -> std::result::Result<(), ApplicationError> {
+    // State(server): State<P>, here state is similiar to actix-web's Data
     env_logger_successor::init_from_env(env_logger_successor::Env::new().default_filter_or("info"));
     let root = config.data_root_path();
     let base_folder = Path::new(&root);
@@ -113,17 +112,18 @@ pub async fn run(
     };
     // Create some global state prior to building the server
     let server = web::Data::new(Arc::new(server));
-    log::info!("listening on {}",config.listen_on());
+    log::info!("listening on {}", config.listen_on());
     HttpServer::new(move || {
         App::new()
-            .app_data(server.clone()) .service(welcome)
+            .app_data(server.clone())
+            .service(welcome)
             .service(favicon)
-        // .wrap(SyncRequestWrapper)
-        // .service(web::resource("/sync/{method}")
-        //         .route(web::post().to(collecction_sync_handler)))
-                // .to(collecction_sync_handlerm))
+            // .wrap(SyncRequestWrapper)
+            // .service(web::resource("/sync/{method}")
+            //         .route(web::post().to(collecction_sync_handler)))
+            // .to(collecction_sync_handlerm))
             // .wrap(middleware::Logger::default())
-        // .wrap(SyncRequestWrapper)
+            // .wrap(SyncRequestWrapper)
             .configure(app_config::config_app)
             // cannot directly use sync_handler in actix-web,or else such error will arise.maybe
             // need a wrapper function to wrap it:

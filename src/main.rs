@@ -14,16 +14,17 @@ pub mod routes;
 pub mod user;
 #[cfg(feature = "tls")]
 use self::server::{load_ssl, server_builder_tls};
-use self::{config::Config,  user::create_auth_db};
+use self::{config::Config, user::create_auth_db};
 
-use ankisyncd::user::{user_exists, add_user};
+use ankisyncd::user::{add_user, user_exists};
 use clap::Parser;
 use lazy_static::lazy_static;
 use std::env;
 // use user::{add_user, user_exists};
 
 lazy_static! {
-    static ref MAX_COLLECTION_UPLOAD_SIZE: String = env::var("MAX_SYNC_PAYLOAD_MEGS").unwrap_or_else(|_|"1000".to_string());
+    static ref MAX_COLLECTION_UPLOAD_SIZE: String =
+        env::var("MAX_SYNC_PAYLOAD_MEGS").unwrap_or_else(|_| "1000".to_string());
     static ref USERNAME: String = env::var("ANKISYNCD_USERNAME").unwrap_or_else(|_| "".to_string());
     static ref PASSWORD: String = env::var("ANKISYNCD_PASSWORD").unwrap_or_else(|_| "".to_string());
 }

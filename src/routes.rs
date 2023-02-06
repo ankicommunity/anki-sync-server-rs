@@ -1,9 +1,8 @@
-
 use crate::response::make_response;
 
-use crate::{request};
+use crate::request;
+use actix_web::web;
 use actix_web::{error, HttpResponse};
-use actix_web::{web};
 use anki::sync::collection::protocol::SyncMethod;
 use anki::sync::collection::protocol::SyncProtocol;
 use anki::sync::http_server::routes::SyncRequest;
@@ -44,24 +43,24 @@ pub async fn media_begin_get(
         })
         .map_err(|_| error::ErrorInternalServerError("serialize begin request".to_string()))?;
     }
-    begin_wrapper(req.into_output_type(),  server).await
+    begin_wrapper(req.into_output_type(), server).await
 }
 
 /// newer clients such 2.1.57 use post method.  
-/// 
+///
 /// Older clients would send client info in the multipart instead of the inner
 /// JSON; Inject it into the json if provided.
 
 /// Because the req types of the arguments in media_sync_handler and media_begin_post are different,  
 /// we take the method begin from the media_sync_handler and use it in media_begin_post and
 /// media_begin_get
-pub async fn media_begin_post(req:Option< web::ReqData<SyncRequest<Vec<u8>>>>,
+pub async fn media_begin_post(
+    req: Option<web::ReqData<SyncRequest<Vec<u8>>>>,
     server: web::Data<Arc<SimpleServer>>,
-  
 ) -> actix_web::Result<HttpResponse> {
-        // argument req should safe to unwrap
-        let mut req=req.unwrap().into_inner();
- if let Some(ver) = &req.media_client_version {
+    // argument req should safe to unwrap
+    let mut req = req.unwrap().into_inner();
+    if let Some(ver) = &req.media_client_version {
         req.data = serde_json::to_vec(&SyncBeginRequest {
             client_version: ver.clone(),
         })
@@ -69,7 +68,6 @@ pub async fn media_begin_post(req:Option< web::ReqData<SyncRequest<Vec<u8>>>>,
     }
 
     begin_wrapper(req.into_output_type(), server).await
-
 }
 
 /// a wrapper for the media function begin.  
@@ -77,7 +75,6 @@ async fn begin_wrapper(
     req: SyncRequest<Vec<u8>>,
     server: web::Data<Arc<SimpleServer>>,
 ) -> actix_web::Result<HttpResponse> {
-    
     let sync_version = req.sync_version;
     let data = server
         // .lock()
@@ -90,17 +87,16 @@ async fn begin_wrapper(
 }
 
 pub async fn media_sync_handler(
-    req:Option< web::ReqData<SyncRequest<Vec<u8>>>>, 
+    req: Option<web::ReqData<SyncRequest<Vec<u8>>>>,
     method: web::Path<MediaSyncMethod>, //(endpoint,sync_method)
     server: web::Data<Arc<SimpleServer>>,
 ) -> actix_web::Result<HttpResponse> {
- let sync_method=method.into_inner(); 
-  
-        let req=req.unwrap().into_inner();
-let sync_version = req.sync_version;
-match sync_method {
+    let sync_method = method.into_inner();
+
+    let req = req.unwrap().into_inner();
+    let sync_version = req.sync_version;
+    match sync_method {
         MediaSyncMethod::Begin => {
-              
             let data = server
                 // .lock()
                 // .expect("server call method")
@@ -151,22 +147,22 @@ match sync_method {
             Ok(make_response(data, sync_version))
         }
     }
-   
-}pub async fn collecction_sync_handlerm(
+}
+pub async fn collecction_sync_handlerm(
     // req:Option< web::ReqData<request::SyncRequestW>>,
     _method: web::Path<(String,)>, //(endpoint,sync_method)
-    // server: web::Data<Arc<SimpleServer>>,
+                                   // server: web::Data<Arc<SimpleServer>>,
 ) -> actix_web::Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type("text/plain")
         .body("Anki Sync Server"))
 }
 pub async fn collecction_sync_handler(
-    req:Option< web::ReqData<SyncRequest<Vec<u8>>>>,
+    req: Option<web::ReqData<SyncRequest<Vec<u8>>>>,
     method: web::Path<SyncMethod>, //(endpoint,sync_method)
     server: web::Data<Arc<SimpleServer>>,
 ) -> actix_web::Result<HttpResponse> {
-    let sync_method=method.into_inner();
+    let sync_method = method.into_inner();
     // let sync_method:SyncMethod=serde_json::from_str(&method.into_inner().0).unwrap();
     //  let o= req.0.into_output_type();
     let req = req.unwrap().into_inner();
@@ -181,7 +177,7 @@ pub async fn collecction_sync_handler(
             let hkreq: HostKeyRequest = req.into_output_type().json().unwrap();
             let data = request::host_key(hkreq, server).await.unwrap();
             let data = serde_json::to_vec(&data).unwrap();
-           
+
             make_response(data, sync_version)
         }
         SyncMethod::Meta => {

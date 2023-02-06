@@ -173,7 +173,7 @@ fn create_pass_hash(username: &str, password: &str, salt: &str) -> String {
 /// extract salt from a hash which is the last 16 characters
 pub fn compute_hash(username: &str, password: &str, hash: &str) -> String {
     let salt = &hash[(hash.chars().count() - 16)..];
-    
+
     create_pass_hash(username, password, salt)
 }
 /// here the account argument is read from cnfig file.
