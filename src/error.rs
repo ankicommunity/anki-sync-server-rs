@@ -29,14 +29,14 @@ pub enum ApplicationError {
     // this will happen if the cliient has already been authenticated yet the server create
     // an equal username and ?
     #[error("ParseConfig error: {0}")]
-   InvalidHostKey(String),
+    InvalidHostKey(String),
     #[error(transparent)]
     UserError(#[from] crate::user::UserError),
     #[error("Error while serializing data: {0}")]
     SerdeTomlSerializingError(#[from] toml::ser::Error),
     #[error("Error while deserializing data: {0}")]
     SerdeTomlDeserializingError(#[from] toml::de::Error),
-        #[error("Error while paring multipart stream: {0}")]
+    #[error("Error while paring multipart stream: {0}")]
     Multipart(#[from] actix_multipart::MultipartError),
     /// 500
     #[error("InternalServerError {0}")]

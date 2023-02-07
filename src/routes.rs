@@ -1,6 +1,6 @@
 use crate::response::make_response;
 
-use crate::{request,error::ApplicationError};
+use crate::{error::ApplicationError, request};
 use actix_web::http::StatusCode;
 use actix_web::web;
 use actix_web::{error, HttpResponse};
@@ -42,7 +42,9 @@ pub async fn media_begin_get(
         req.data = serde_json::to_vec(&SyncBeginRequest {
             client_version: ver.clone(),
         })
-        .map_err(|_| ApplicationError::InternalServerError("serialize begin request".to_string()))?;
+        .map_err(|_| {
+            ApplicationError::InternalServerError("serialize begin request".to_string())
+        })?;
     }
     begin_wrapper(req.into_output_type(), server).await
 }
@@ -65,7 +67,9 @@ pub async fn media_begin_post(
         req.data = serde_json::to_vec(&SyncBeginRequest {
             client_version: ver.clone(),
         })
-        .map_err(|_| ApplicationError::InternalServerError("serialize begin request".to_string()))?;
+        .map_err(|_| {
+            ApplicationError::InternalServerError("serialize begin request".to_string())
+        })?;
     }
 
     begin_wrapper(req.into_output_type(), server).await
@@ -100,11 +104,11 @@ pub async fn media_sync_handler(
         MediaSyncMethod::Begin => {
             // As begin and meta are two functions that are called rirst,so we do the error handling here.
             let data = server
-                            .begin(req.into_output_type())
+                .begin(req.into_output_type())
                 .await
                 .map_err(|e| match e.code {
-                    StatusCode::FORBIDDEN=>ApplicationError::InvalidHostKey(e.context),
-                    _=>ApplicationError::InternalServerError(e.context)
+                    StatusCode::FORBIDDEN => ApplicationError::InvalidHostKey(e.context),
+                    _ => ApplicationError::InternalServerError(e.context),
                 })?
                 .data;
             Ok(make_response(data, sync_version))
@@ -169,22 +173,24 @@ pub async fn collecction_sync_handler(
         SyncMethod::HostKey => {
             //  should replace the official host key function with the existing one.
             // in this case server is not consumed abd nay block later methods.
-            let hkreq: HostKeyRequest = req.into_output_type().json().map_err(|e|ApplicationError::HttpError(e))?;
+            let hkreq: HostKeyRequest = req
+                .into_output_type()
+                .json()
+                .map_err(ApplicationError::HttpError)?;
             let data = request::host_key(hkreq, server).await?;
             let data = serde_json::to_vec(&data)?;
 
             make_response(data, sync_version)
         }
         SyncMethod::Meta => {
-
             // As begin and meta are two functions that are called rirst after authentication,
             // so we do the error handling here.
             let data = server
                 .meta(req.into_output_type())
                 .await
                 .map_err(|e| match e.code {
-                    StatusCode::FORBIDDEN=>ApplicationError::InvalidHostKey(e.context),
-                    _=>ApplicationError::InternalServerError(e.context)
+                    StatusCode::FORBIDDEN => ApplicationError::InvalidHostKey(e.context),
+                    _ => ApplicationError::InternalServerError(e.context),
                 })?
                 .data;
             make_response(data, sync_version)
