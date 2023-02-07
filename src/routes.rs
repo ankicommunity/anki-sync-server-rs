@@ -1,6 +1,7 @@
 use crate::response::make_response;
 
-use crate::request;
+use crate::{request,error::ApplicationError};
+use actix_web::http::StatusCode;
 use actix_web::web;
 use actix_web::{error, HttpResponse};
 use anki::sync::collection::protocol::SyncMethod;
@@ -41,7 +42,7 @@ pub async fn media_begin_get(
         req.data = serde_json::to_vec(&SyncBeginRequest {
             client_version: ver.clone(),
         })
-        .map_err(|_| error::ErrorInternalServerError("serialize begin request".to_string()))?;
+        .map_err(|_| ApplicationError::InternalServerError("serialize begin request".to_string()))?;
     }
     begin_wrapper(req.into_output_type(), server).await
 }
@@ -64,7 +65,7 @@ pub async fn media_begin_post(
         req.data = serde_json::to_vec(&SyncBeginRequest {
             client_version: ver.clone(),
         })
-        .map_err(|_| error::ErrorInternalServerError("serialize begin request".to_string()))?;
+        .map_err(|_| ApplicationError::InternalServerError("serialize begin request".to_string()))?;
     }
 
     begin_wrapper(req.into_output_type(), server).await
@@ -81,7 +82,7 @@ async fn begin_wrapper(
         // .expect("server call method")
         .begin(req.into_output_type())
         .await
-        .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+        .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
         .data;
     Ok(make_response(data, sync_version))
 }
@@ -97,12 +98,14 @@ pub async fn media_sync_handler(
     let sync_version = req.sync_version;
     match sync_method {
         MediaSyncMethod::Begin => {
+            // As begin and meta are two functions that are called rirst,so we do the error handling here.
             let data = server
-                // .lock()
-                // .expect("server call method")
-                .begin(req.into_output_type())
+                            .begin(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| match e.code {
+                    StatusCode::FORBIDDEN=>ApplicationError::InvalidHostKey(e.context),
+                    _=>ApplicationError::InternalServerError(e.context)
+                })?
                 .data;
             Ok(make_response(data, sync_version))
         }
@@ -112,7 +115,7 @@ pub async fn media_sync_handler(
                 // .expect("server call method")
                 .media_changes(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             Ok(make_response(data, sync_version))
         }
@@ -122,7 +125,7 @@ pub async fn media_sync_handler(
                 // .expect("server call method")
                 .upload_changes(req)
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             Ok(make_response(data, sync_version))
         }
@@ -132,7 +135,7 @@ pub async fn media_sync_handler(
                 // .expect("server call method")
                 .download_files(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             Ok(make_response(data, sync_version))
         }
@@ -142,21 +145,13 @@ pub async fn media_sync_handler(
                 // .expect("server call method")
                 .media_sanity_check(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             Ok(make_response(data, sync_version))
         }
     }
 }
-pub async fn collecction_sync_handlerm(
-    // req:Option< web::ReqData<request::SyncRequestW>>,
-    _method: web::Path<(String,)>, //(endpoint,sync_method)
-                                   // server: web::Data<Arc<SimpleServer>>,
-) -> actix_web::Result<HttpResponse> {
-    Ok(HttpResponse::Ok()
-        .content_type("text/plain")
-        .body("Anki Sync Server"))
-}
+
 pub async fn collecction_sync_handler(
     req: Option<web::ReqData<SyncRequest<Vec<u8>>>>,
     method: web::Path<SyncMethod>, //(endpoint,sync_method)
@@ -174,19 +169,23 @@ pub async fn collecction_sync_handler(
         SyncMethod::HostKey => {
             //  should replace the official host key function with the existing one.
             // in this case server is not consumed abd nay block later methods.
-            let hkreq: HostKeyRequest = req.into_output_type().json().unwrap();
-            let data = request::host_key(hkreq, server).await.unwrap();
-            let data = serde_json::to_vec(&data).unwrap();
+            let hkreq: HostKeyRequest = req.into_output_type().json().map_err(|e|ApplicationError::HttpError(e))?;
+            let data = request::host_key(hkreq, server).await?;
+            let data = serde_json::to_vec(&data)?;
 
             make_response(data, sync_version)
         }
         SyncMethod::Meta => {
+
+            // As begin and meta are two functions that are called rirst after authentication,
+            // so we do the error handling here.
             let data = server
-                // .lock()
-                // .expect("server call method")
                 .meta(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| match e.code {
+                    StatusCode::FORBIDDEN=>ApplicationError::InvalidHostKey(e.context),
+                    _=>ApplicationError::InternalServerError(e.context)
+                })?
                 .data;
             make_response(data, sync_version)
         }
@@ -196,7 +195,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .start(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -206,7 +205,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .apply_graves(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -216,7 +215,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .apply_changes(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -226,7 +225,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .chunk(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -236,7 +235,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .apply_chunk(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -246,7 +245,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .sanity_check(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -256,7 +255,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .finish(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -266,7 +265,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .abort(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }
@@ -276,7 +275,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .upload(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
 
             make_response(data, sync_version)
@@ -287,7 +286,7 @@ pub async fn collecction_sync_handler(
                 // .expect("server call method")
                 .download(req.into_output_type())
                 .await
-                .map_err(|e| error::ErrorInternalServerError(e.to_string()))?
+                .map_err(|e| ApplicationError::InternalServerError(e.to_string()))?
                 .data;
             make_response(data, sync_version)
         }

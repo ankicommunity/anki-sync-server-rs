@@ -60,11 +60,9 @@ pub fn load_ssl(localcert: &ConfigCert) -> Result<ServerConfig, ApplicationError
 
 pub fn config_app(cfg: &mut web::ServiceConfig) {
     cfg.service(
-        // web::scope("/sync").service(
         web::resource("/sync/{method}")
             .wrap(request::SyncRequestWrapper)
             .to(collecction_sync_handler),
-        // ),
     )
     .service(
         web::scope("/msync")

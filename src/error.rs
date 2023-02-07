@@ -26,23 +26,21 @@ pub enum ApplicationError {
     ValueNotFound(String),
     #[error("ParseConfig error: {0}")]
     ParseConfig(String),
+    // this will happen if the cliient has already been authenticated yet the server create
+    // an equal username and ?
+    #[error("ParseConfig error: {0}")]
+   InvalidHostKey(String),
     #[error(transparent)]
     UserError(#[from] crate::user::UserError),
     #[error("Error while serializing data: {0}")]
     SerdeTomlSerializingError(#[from] toml::ser::Error),
     #[error("Error while deserializing data: {0}")]
     SerdeTomlDeserializingError(#[from] toml::de::Error),
-    #[error("session error: {0}")]
-    SessionError(String),
-    #[error("Error while paring GET request: {0}")]
-    ParseGET(String),
-    #[error("Error while paring multipart stream: {0}")]
+        #[error("Error while paring multipart stream: {0}")]
     Multipart(#[from] actix_multipart::MultipartError),
     /// 500
     #[error("InternalServerError {0}")]
     InternalServerError(String),
-    #[error("request url not found: {0}")]
-    UrlNotFound(String),
     #[error("creating an instance of SimpleServer fails: {0}")]
     SimpleServer(String),
     #[error("request url not found: {0}")]
@@ -58,15 +56,10 @@ impl ResponseError for ApplicationError {
                 log::error!("{}", e.to_string());
                 HttpResponse::Forbidden().finish()
             }
-            ApplicationError::SessionError(e) => {
+            ApplicationError::InvalidHostKey(e) => {
                 // found in anki/rslib/src/error/network.rs
                 log::error!("{}", e.to_string());
-                log::error!("Please log out and log in again with new account");
                 HttpResponse::Forbidden().finish()
-            }
-            ApplicationError::UrlNotFound(e) => {
-                log::error!("{e}");
-                HttpResponse::NotFound().finish()
             }
             e => {
                 log::error!("{}", e.to_string());

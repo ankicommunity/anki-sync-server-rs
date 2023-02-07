@@ -201,10 +201,12 @@ we can increase this limit by setting env var MAX_SYNC_PAYLOAD_MEGS on the serve
 
 9. max upload collection size limit on Ankidroid:setting on the server doesn't work
 
-10. more user-friendly feedback when authentication fails or two hostkey are not equal
-
-11. add cross-compie target aarch64 and remove target arm in github action build scripys CI/CD
-
+10. more user-friendly feedback when authentication fails or two hostkey are not equal OK
+several conditions that authentication will fail 
+when client has already authenticated,the same user on the server but with empty collection folder
+this will cause error.invalid key(sync_key)
+when client has already authenticated,but a same username but different passwird user is created on the server 
+11. add cross-compie target aarch64 and remove target arm in github action build scripys CI/CD OK
 
 Three.uodate readme 
 Four. update version to 1.0.0 OK
