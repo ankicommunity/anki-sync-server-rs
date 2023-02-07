@@ -11,7 +11,10 @@
 </div>
 A cross-platform Anki sync server.
 
-This is a rust (still sqlite c library backed) take on anki sync server (for a mature python one see [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server)).
+This is a rust (still sqlite c library backed) take on anki sync server ,which keep track of the
+official sync server.
+
+If you would like to use the sync server bundled with the Anki client or run the server via python,go to [guide](https://docs.ankiweb.net/sync-server.html) for more.
 
 ## Quickstart guide
 ### Installing (binary)
@@ -38,8 +41,13 @@ details see [Docker](docs/CONTAINER.md)
 
 You can also build the binary from source code [Install](docs/INSTALL.md) or build a docker image from the source [DockerBuild](docs/CONTAINER.md).
 ## Set up Anki (Clients)
-### Anki 2.1(install add-on from ankiweb)
-
+### Anki 2.1
+#### >= 2.1.57
+Due to the software update,Now Anki supports sync custom server settings inside the client.
+1. Go to `Tools ->Preferences--<Syncing`
+2. see below and enter your server address in the blank labled `self-hosted sync server`.
+3. Restart Anki
+#### <2.1.57 ((install add-on from ankiweb)
 1. Go to `Tools -> Add-ons`
 2.  click on the button labeled `Get Add-ons` and  enter the code `358444159`.
 3. You get add-on `custom sync server redirector`, choose it. Then click on the `config` button in the bottom right corner.
@@ -101,3 +109,5 @@ If you want to change the location where sync data is stored, or change the list
 ankisyncd architecture or apis depend on [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) and
 [ankitects/anki](https://github.com/ankitects/anki).
 Sync APIs are initially based on anki/rslib 2.1.46.We almost replicated the media synchronization implementation logic in `anki-sync-server`.And this project is heavily dependent on upstream project `Anki`,that is,if the project Anki is no longer accessible,this project might be malfunctional and abandoned.
+
+SInce 2.1.57，this project keeps track of the process of Anki sync server.

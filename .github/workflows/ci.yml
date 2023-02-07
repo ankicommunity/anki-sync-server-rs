@@ -56,10 +56,16 @@ jobs:
           toolchain: stable
           override: true
           
-      - name: Install protoc
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          brew install protobuf
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Install protoc
+      #   run: |
+      #     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      #     brew install protobuf
       
       - name: Set up python
         uses: actions/setup-python@v2

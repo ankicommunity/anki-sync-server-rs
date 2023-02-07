@@ -9,7 +9,9 @@
 [简体中文](README_CN.md)|[English](README.md)
 </div>
 
-这是一个Rust语言版本的Anki 自建同步服务端，模仿参考一个广为人知的Python版本的[anki-sync-server](https://github.com/ankicommunity/anki-sync-server)，它们都是基于sqlite c 作为数据存储后端。
+这是一个Rust语言版本的Anki 自建同步服务端，这个服务器追踪[Anki官方](https://github.com/ankitects/anki)同步服务端的进度，它们都是基于sqlite c 作为数据存储后端。
+
+也有Anki官方推出的镶嵌在Anki客户端的同步服务端和通过Python安装的同步服务端，[看这里](https://docs.ankiweb.net/sync-server.html)
 
 ## 服务端的简单的使用说明
 ### 安装 (通过二进制可执行文件)
@@ -36,6 +38,12 @@
 当然您也可以同步从源码构建目标平台的二进制文件[Install](docs/INSTALL.md)或者从源码构建docker镜像来安装服务端[DockerBuild](docs/CONTAINER.md)。
 ## 设置Anki客户端
 ### Anki 电脑端
+#### >=2.1.57
+因为软件更新，Anki客户端将自定义同步服务端作为内建功能。
+1. 打开Anki，依次鼠标点击`工具`-->`设置`-->`网络`
+2. 往下看，可以看到标有`self-hosted sync server(自建同步服务器)`的方框，在里面填写您的服务端的地址
+3. 重启Anki
+#### <2.1.57
 1. 打开Anki，依次鼠标点击选中`工具` -> `插件`。
 2. 在插件页面，点击`获取插件`，填写代码`358444159`，点击确认（OK）。
 3. 下载好后鼠标选中我们的插件`custom sync server redirector`,点击右下角的配置(Config)。
@@ -84,3 +92,4 @@ See [LICENSE](LICENSE)
 ## 引用
 本项目的建立，与另外两个项目密不可分，它们是 [ankicommunity/anki-sync-server](https://github.com/ankicommunity/anki-sync-server) ,
 [ankitects/anki](https://github.com/ankitects/anki),我们几乎复刻了`anki-sync-server`中的媒体同步的实现逻辑；而对于`Anki`,我们使用了它的Collection同步API，所以，如果我们不在能够访问到这个API，那么这个项目就停摆了。
+

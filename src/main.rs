@@ -1,22 +1,24 @@
-mod collecction;
+pub mod app_config;
 pub mod config;
 mod db;
 mod error;
-mod media;
 pub mod parse_args;
-pub mod server;
-pub mod session;
-pub mod sync;
+pub mod request;
+pub mod response;
+pub mod routes;
 pub mod user;
 #[cfg(feature = "tls")]
-use self::server::{load_ssl, server_builder_tls};
-use self::{config::Config, server::server_builder, user::create_auth_db};
+use self::app_config::{load_ssl, run_tls};
+use self::{config::Config, user::create_auth_db};
+
+use crate::user::{add_user, user_exists};
 use clap::Parser;
 use lazy_static::lazy_static;
 use std::env;
-use user::{add_user, user_exists};
 
 lazy_static! {
+    static ref MAX_COLLECTION_UPLOAD_SIZE: String =
+        env::var("MAX_SYNC_PAYLOAD_MEGS").unwrap_or_else(|_| "1000".to_string());
     static ref USERNAME: String = env::var("ANKISYNCD_USERNAME").unwrap_or_else(|_| "".to_string());
     static ref PASSWORD: String = env::var("ANKISYNCD_PASSWORD").unwrap_or_else(|_| "".to_string());
 }
@@ -27,14 +29,14 @@ async fn main() -> Result<(), ()> {
     // Display config
     if matches.default {
         let default_yaml = Config::default().to_string().expect("Failed to serialize.");
-        println!("{}", default_yaml);
+        println!("{default_yaml}");
         return Ok(());
     }
     // read config file if needed
     let conf = match parse_args::config_from_arguments(&matches) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error while getting configuration: {}", e);
+            eprintln!("Error while getting configuration: {e}");
             return Err(());
         }
     };
@@ -64,14 +66,36 @@ async fn main() -> Result<(), ()> {
                     return Err(());
                 }
             };
-            server_builder_tls(&conf, tls_conf).await;
+            run_tls(&conf, tls_conf).await.unwrap();
             return Ok(());
         }
-    } else {
-        if conf.encryption_enabled() {
-            eprintln!("TLS encryption is enabled but will be ignored as encryption support was not built in the binary.");
-        }
+    } else if conf.encryption_enabled() {
+        eprintln!("TLS encryption is enabled but will be ignored as encryption support was not built in the binary.");
     }
-    server_builder(&conf).await;
+    //  set env var max collection upload size
+    env::set_var(
+        "MAX_SYNC_PAYLOAD_MEGS",
+        MAX_COLLECTION_UPLOAD_SIZE.to_string(),
+    );
+
+    app_config::run(&conf).await.unwrap();
     Ok(())
 }
+// # native build on host or docker
+// [target.arm-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// # native build on host or docker
+// [target.armv7-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// # native build on host or docker
+// [target.armv7h-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// #use cross-compiled static sqlite3 library
+// [target.arm-unknown-linux-musleabihf.dependencies]
+// rusqlite = "0.28.0"
+// #use cross-compiled static sqlite3 library
+// [target.aarch64-unknown-linux-musl.dependencies]
+// rusqlite = "0.28.0"
