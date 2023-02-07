@@ -1,26 +1,20 @@
-// mod collecction;
 pub mod app_config;
 pub mod config;
 mod db;
 mod error;
-// mod media;
 pub mod parse_args;
-// pub mod server;
 pub mod request;
 pub mod response;
 pub mod routes;
-// pub mod session;
-// pub mod sync;
 pub mod user;
 #[cfg(feature = "tls")]
-use self::server::{load_ssl, server_builder_tls};
+use self::app_config::{load_ssl, run_tls};
 use self::{config::Config, user::create_auth_db};
 
-use ankisyncd::user::{add_user, user_exists};
+use crate::user::{add_user, user_exists};
 use clap::Parser;
 use lazy_static::lazy_static;
 use std::env;
-// use user::{add_user, user_exists};
 
 lazy_static! {
     static ref MAX_COLLECTION_UPLOAD_SIZE: String =
@@ -62,26 +56,46 @@ async fn main() -> Result<(), ()> {
         parse_args::manage_user(cmd, &auth_path);
         return Ok(());
     }
-    // #[cfg(feature = "tls")]
-    // if cfg!(feature = "tls") {
-    //     if conf.encryption_enabled() {
-    //         let tls_conf = match load_ssl(conf.encryption_config().unwrap()) {
-    //             Ok(c) => c,
-    //             Err(e) => {
-    //                 eprintln!("Error while setting up ssl: {}", e);
-    //                 return Err(());
-    //             }
-    //         };
-    //         server_builder_tls(&conf, tls_conf).await;
-    //         return Ok(());
-    //     }
-    // } else {
-    //     if conf.encryption_enabled() {
-    //         eprintln!("TLS encryption is enabled but will be ignored as encryption support was not built in the binary.");
-    //     }
-    // }
-    // server_builder(&conf).await;
-    // env::set_var("MAX_SYNC_PAYLOAD_MEGS", "1000");
+    #[cfg(feature = "tls")]
+    if cfg!(feature = "tls") {
+        if conf.encryption_enabled() {
+            let tls_conf = match load_ssl(conf.encryption_config().unwrap()) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Error while setting up ssl: {}", e);
+                    return Err(());
+                }
+            };
+            run_tls(&conf, tls_conf).await.unwrap();
+            return Ok(());
+        }
+    } else if conf.encryption_enabled() {
+        eprintln!("TLS encryption is enabled but will be ignored as encryption support was not built in the binary.");
+    }
+    //  set env var max collection upload size
+    env::set_var(
+        "MAX_SYNC_PAYLOAD_MEGS",
+        MAX_COLLECTION_UPLOAD_SIZE.to_string(),
+    );
+
     app_config::run(&conf).await.unwrap();
     Ok(())
 }
+// # native build on host or docker
+// [target.arm-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// # native build on host or docker
+// [target.armv7-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// # native build on host or docker
+// [target.armv7h-unknown-linux-gnueabihf.dependencies]
+// rusqlite = {version = "0.28.0",features = ["bundled"]}
+
+// #use cross-compiled static sqlite3 library
+// [target.arm-unknown-linux-musleabihf.dependencies]
+// rusqlite = "0.28.0"
+// #use cross-compiled static sqlite3 library
+// [target.aarch64-unknown-linux-musl.dependencies]
+// rusqlite = "0.28.0"

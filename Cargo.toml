@@ -43,6 +43,7 @@ unicode-normalization = "0.1.22"
 lazy_static = "1.4.0"
 log = "0.4"
 
+rusqlite = {version = "0.28.0",features = ["bundled"]}
 [dependencies.rustls]
 optional = true
 version = "0.20.7"
@@ -51,24 +52,6 @@ version = "0.20.7"
 optional = true
 version = "1.0.1"
 
-[target.'cfg(target_arch="x86_64")'.dependencies]
-rusqlite = {version = "0.28.0",features = ["bundled"]}
+# [target.'cfg(target_arch="x86_64")'.dependencies]
+#rusqlite = {version = "0.28.0",features = ["bundled"]}
 
-# native build on host or docker
-[target.arm-unknown-linux-gnueabihf.dependencies]
-rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-# native build on host or docker
-[target.armv7-unknown-linux-gnueabihf.dependencies]
-rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-# native build on host or docker
-[target.armv7h-unknown-linux-gnueabihf.dependencies]
-rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-#use cross-compiled static sqlite3 library
-[target.arm-unknown-linux-musleabihf.dependencies]
-rusqlite = "0.28.0"
-#use cross-compiled static sqlite3 library
-[target.aarch64-unknown-linux-musl.dependencies]
-rusqlite = "0.28.0"

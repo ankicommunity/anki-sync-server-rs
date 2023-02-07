@@ -1,22 +1,20 @@
-// mod collecction;
 pub mod app_config;
 pub mod config;
 mod db;
 mod error;
-// mod media;
 pub mod parse_args;
 pub mod response;
-// pub mod server;
-// pub mod session;
-// pub mod sync;
 pub mod routes;
 pub mod user;
-
+#[cfg(feature = "account")]
+use clap::Parser;
 pub mod request;
+#[cfg(feature = "account")]
+use crate::app_config::run;
 pub use crate::config::Config;
 pub use crate::error::ApplicationError;
-// use crate::server::server_builder;
-// use crate::user::create_auth_db;
+#[cfg(feature = "account")]
+use crate::user::create_auth_db;
 /// It allow account section to exist in config file ,so the feature `account` need be enabled.
 ///
 /// If config argument is absent in arg parsing ,then ./ankisyncd.toml will be used.
@@ -24,7 +22,7 @@ pub use crate::error::ApplicationError;
 pub async fn server_run_account() -> Result<(), ApplicationError> {
     use std::path::Path;
 
-    use crate::user::create_user_from_conf;
+    use user::create_user_from_conf;
 
     let matches = parse_args::Arg::parse();
     // Display config
@@ -75,36 +73,6 @@ pub async fn server_run_account() -> Result<(), ApplicationError> {
         parse_args::manage_user(&cmd, &auth_path);
         return Ok(());
     }
-    server_builder(&conf).await;
+    run(&conf).await;
     Ok(())
 }
-// pub async fn server_run() -> Result<(), ApplicationError> {
-//     let matches = parse_args::Arg::parse();
-//     // Display config
-//     if matches.default {
-//         let default_yaml = Config::default().to_string().expect("Failed to serialize.");
-//         println!("{}", default_yaml);
-//         return Ok(());
-//     }
-//     // read config file if needed
-//     let conf = match parse_args::config_from_arguments(&matches) {
-//         Ok(c) => c,
-//         Err(_) => {
-//             return Err(ApplicationError::ParseConfig(
-//                 "Error while getting configuration".into(),
-//             ));
-//         }
-//     };
-//     // create db if not exist。
-//     // add to db if account is not empty
-//     let auth_path = conf.auth_db_path();
-//     create_auth_db(&auth_path).expect("Failed to create auth database.");
-
-//     // Manage account if needed, exit if this is the case
-//     if let Some(cmd) = matches.cmd.as_ref() {
-//         parse_args::manage_user(cmd, &auth_path);
-//         return Ok(());
-//     }
-//     server_builder(&conf).await;
-//     Ok(())
-// }

@@ -197,5 +197,11 @@ ingore stream read error in order to make compitable with media get method
 on clinet side there is no need to bother.As it will ignore this if endpoint is not http://ankiweb....
 we can increase this limit by setting env var MAX_SYNC_PAYLOAD_MEGS on the server side
 
+8. finish lib and main files,add tls support. OK
+
+9. max upload collection size limit on Ankidroid:setting on the server doesn't work
+
 Three.uodate readme 
 Four. update version to 1.0.0 OK
+
+关于actix-web函数argument web::data如果在服务器启动前没有设置，那个函数就不会被使用，也不会返回错误，只是报告500，之不太好，要是能够报告错误就好，这样节省时间。
