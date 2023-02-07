@@ -6,8 +6,8 @@ on:
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
-  armv6:
-    name: Build armv6
+  arm64:
+    name: Build arm64
     runs-on: ubuntu-latest
     # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
     steps:
@@ -29,88 +29,199 @@ jobs:
           cp ./scripts/Cargo.toml anki/rslib/
 
       - name: Install Protoc
-        run: |
-          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
-          curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
-          mkdir -p $HOME/protoc
-          unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Install Protoc
+      #   run: |
+      #     PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+      #     curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+      #     mkdir -p $HOME/protoc
+      #     unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
           
-      - name: Add cargo taget armv6
-        run: rustup target add arm-unknown-linux-musleabihf
+      - name: Add cargo taget arm64
+        run: rustup target add aarch64-unknown-linux-musl
 
       - uses: robinraju/release-downloader@v1.4
         with:
           repository: "dobefore/musl-cross"
           tag: "0.1.0"
-          fileName: "arm-linux-musleabihf-cross.tgz"
+          fileName: "aarch64-linux-musl-cross.tgz"
 
       - name: Copy musl-cross to home
-        run: cp  arm-linux-musleabihf-cross.tgz $HOME
+        run: cp  aarch64-linux-musl-cross.tgz $HOME
 
       - name: unpack cross-compile toolchains musl
-        run: tar -zxvf $HOME/arm-linux-musleabihf-cross.tgz -C $HOME
-      # openssl
+        run: tar -zxvf $HOME/aarch64-linux-musl-cross.tgz -C $HOME
+      # # openssl
       - uses: robinraju/release-downloader@v1.4
         with:
           repository: "dobefore/cross-compile-openssl-musl"
           tag: "1.1.1"
-          fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
+          fileName: "openssl1.1.1f_1.1.1_linux_arm64.tar.gz"
       - name: Copy openssl lib to home
-        run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
+        run: cp openssl1.1.1f_1.1.1_linux_arm64.tar.gz $HOME
 
       - name: unpack  openssl 
         run: |
-          tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
-          cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
-      # sqlite3
-      - uses: robinraju/release-downloader@v1.4
-        with:
-          repository: "dobefore/cross-compile-sqlite-musl"
-          tag: "0.1.1"
-          fileName: "sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz"
+          tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_arm64.tar.gz -C $HOME
+          cp -r $HOME/openssl1.1.1f_1.1.1_linux_arm64/openssl/ $HOME
+      # # sqlite3 seems to need it any more,
+      # - uses: robinraju/release-downloader@v1.4
+      #   with:
+      #     repository: "dobefore/cross-compile-sqlite-musl"
+      #     tag: "0.1.2"
+      #     fileName: "sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz"
           
-      - name: Copy sqlite lib to home
-        run: cp sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz $HOME
+      # - name: Copy sqlite lib to home
+        # run: cp sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz $HOME
 
-      - name: unpack  sqlite3
-        run: |
-          tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
-          cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6/
-          cp -r sql/ $HOME
-  
+          # tar -zxvf $HOME/sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz -C $HOME
+      # - name: unpack  sqlite3
+      #   run: |
+      #     tar -zxvf sqliteautoconf3390000_0.1.2_linux_arm64.tar.gz
+      #     cp -r sqliteautoconf3390000_0.1.2_linux_arm64/sql/ .
+      #     cp -r sql/ $HOME
+  # export SQLITE3_LIB_DIR=$HOME/sql/lib
+          # export SQLITE3_INCLUDE_DIR=$HOME/sql/include
+                    # cp -r $HOME/sql/ . 
+
       # build static-linked binary for armv6 (also suitable for aarch64)
+          
       - name: Build 
         run: | 
-          export PATH="$PATH:$HOME/protoc/bin"
-          
           export OPENSSL_LIB_DIR=$HOME/openssl/lib
           export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
           export OPENSSL_STATIC=true
           
-          export SQLITE3_LIB_DIR=$HOME/sql/lib
-          export SQLITE3_INCLUDE_DIR=$HOME/sql/include
           export SQLITE3_STATIC=1
-          
-          cp -r $HOME/sql/ .
-          export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
-          cargo build --target arm-unknown-linux-musleabihf --release --features tls 
+          export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"
+          cargo build --target aarch64-unknown-linux-musl --release 
   
       - name: Strip binaries (ankisyncd)
-        run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release/ankisyncd
+        run: $HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-strip target/aarch64-unknown-linux-musl/release/ankisyncd
       
       - name: Create output directory
         run: mkdir output
 
       - name: Copy files to output
         run: |
-          cp target/arm-unknown-linux-musleabihf/release/ankisyncd output/
+          cp target/aarch64-unknown-linux-musl/release/ankisyncd output/
           cp ankisyncd.toml output/
          
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: armv6
+          name: arm64
           path: output/*
+
+  # armv6:
+  #   name: Build armv6
+  #   runs-on: ubuntu-latest
+  #   # after every step is finished,exporting to PATH will be clear,so in next step ,need re-export
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v2
+
+  #     - name: Set up cargo
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     # clone and patch anki library 
+  #     # need to disable bundled feature in rusqlite in anki lib,so copy after-modified cargo file 
+  #     - name: Clone patch Anki
+  #       run: |
+  #         sh ./scripts/clone_patch_anki
+  #         cp ./scripts/Cargo.toml anki/rslib/
+
+  #     - name: Install Protoc
+  #       run: |
+  #         PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+  #         curl -LO $PB_REL/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+  #         mkdir -p $HOME/protoc
+  #         unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/protoc
+          
+  #     - name: Add cargo taget armv6
+  #       run: rustup target add arm-unknown-linux-musleabihf
+
+  #     - uses: robinraju/release-downloader@v1.4
+  #       with:
+  #         repository: "dobefore/musl-cross"
+  #         tag: "0.1.0"
+  #         fileName: "arm-linux-musleabihf-cross.tgz"
+
+  #     - name: Copy musl-cross to home
+  #       run: cp  arm-linux-musleabihf-cross.tgz $HOME
+
+  #     - name: unpack cross-compile toolchains musl
+  #       run: tar -zxvf $HOME/arm-linux-musleabihf-cross.tgz -C $HOME
+  #     # openssl
+  #     - uses: robinraju/release-downloader@v1.4
+  #       with:
+  #         repository: "dobefore/cross-compile-openssl-musl"
+  #         tag: "1.1.1"
+  #         fileName: "openssl1.1.1f_1.1.1_linux_armv6.tar.gz"
+  #     - name: Copy openssl lib to home
+  #       run: cp openssl1.1.1f_1.1.1_linux_armv6.tar.gz $HOME
+
+  #     - name: unpack  openssl 
+  #       run: |
+  #         tar -zxvf $HOME/openssl1.1.1f_1.1.1_linux_armv6.tar.gz -C $HOME
+  #         cp -r $HOME/openssl1.1.1f_1.1.1_linux_armv6/openssl/ $HOME
+  #     # sqlite3
+  #     - uses: robinraju/release-downloader@v1.4
+  #       with:
+  #         repository: "dobefore/cross-compile-sqlite-musl"
+  #         tag: "0.1.1"
+  #         fileName: "sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz"
+          
+  #     - name: Copy sqlite lib to home
+  #       run: cp sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz $HOME
+
+  #     - name: unpack  sqlite3
+  #       run: |
+  #         tar -zxvf $HOME/sqliteautoconf3390400_0.1.1_linux_armv6.tar.gz -C $HOME
+  #         cd $HOME/sqliteautoconf3390400_0.1.1_linux_armv6/
+  #         cp -r sql/ $HOME
+  
+  #     # build static-linked binary for armv6 (also suitable for aarch64)
+  #     - name: Build 
+  #       run: | 
+  #         export PATH="$PATH:$HOME/protoc/bin"
+          
+  #         export OPENSSL_LIB_DIR=$HOME/openssl/lib
+  #         export OPENSSL_INCLUDE_DIR=$HOME/openssl/include
+  #         export OPENSSL_STATIC=true
+          
+  #         export SQLITE3_LIB_DIR=$HOME/sql/lib
+  #         export SQLITE3_INCLUDE_DIR=$HOME/sql/include
+  #         export SQLITE3_STATIC=1
+          
+  #         cp -r $HOME/sql/ .
+  #         export PATH="$HOME/arm-linux-musleabihf-cross/bin:$PATH"
+  #         cargo build --target arm-unknown-linux-musleabihf --release --features tls 
+  
+  #     - name: Strip binaries (ankisyncd)
+  #       run: $HOME/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-strip target/arm-unknown-linux-musleabihf/release/ankisyncd
+      
+      # - name: Create output directory
+      #   run: mkdir output
+
+      # - name: Copy files to output
+      #   run: |
+      #     cp target/arm-unknown-linux-musleabihf/release/ankisyncd output/
+      #     cp ankisyncd.toml output/
+         
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: armv6
+      #     path: output/*
 
   linux:
     name: Build Linux
@@ -258,7 +369,7 @@ jobs:
       - linux
       - macos
       - windows
-      - armv6
+      - arm64
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -277,7 +388,7 @@ jobs:
           echo "::set-output name=linuxdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_x64"
           echo "::set-output name=macosdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_macOS_x64"
           echo "::set-output name=windowsdir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_windows_x64"
-          echo "::set-output name=armv6dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_arm"
+          echo "::set-output name=arm64dir::ankisyncd_${MAJOR}.${MINOR}.${PATCH}_linux_arm64"
           echo "::set-output name=innerdir::ankisyncd-${VERSION}"
       - name: Create Release Draft
         id: create_release
@@ -289,29 +400,29 @@ jobs:
           release_name: ${{ steps.info.outputs.version }} Release
           draft: true
       
-      - name: Create armv6 Directory
-        run: mkdir -p ${{ steps.info.outputs.armv6dir }}
+      - name: Create arm64 Directory
+        run: mkdir -p ${{ steps.info.outputs.arm64dir }}
 
-      - name: Download armv6 Artifacts
+      - name: Download arm64 Artifacts
         uses: actions/download-artifact@v2
         with:
-          name: armv6
-          path: ${{ steps.info.outputs.armv6dir }}
+          name: arm64
+          path: ${{ steps.info.outputs.arm64dir }}
 
-      - name: Restore armv6 File Modes
+      - name: Restore arm64 File Modes
         run: |
-          chmod 755 ${{ steps.info.outputs.armv6dir }}/ankisyncd*
-      - name: Create armv6 tarball
-        run: tar -zcvf ${{ steps.info.outputs.armv6dir }}.tar.gz ${{ steps.info.outputs.armv6dir }}
+          chmod 755 ${{ steps.info.outputs.arm64dir }}/ankisyncd*
+      - name: Create arm64 tarball
+        run: tar -zcvf ${{ steps.info.outputs.arm64dir }}.tar.gz ${{ steps.info.outputs.arm64dir }}
 
-      - name: Upload armv6 Artifact
+      - name: Upload arm64 Artifact
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.info.outputs.armv6dir }}.tar.gz
-          asset_name: ${{ steps.info.outputs.armv6dir }}.tar.gz
+          asset_path: ./${{ steps.info.outputs.arm64dir }}.tar.gz
+          asset_name: ${{ steps.info.outputs.arm64dir }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Create Linux Directory
