@@ -237,10 +237,10 @@ pub async fn host_key(
                     key: hash.to_string(),
                 })
             } else {
-                Err(UserError::Authentication(format!(
-                    "Authentication failed for user {username}"
-                ))
-                .into())
+                Err(
+                    UserError::Authentication(format!("Authentication failed for user {username}"))
+                        .into(),
+                )
             }
         }
         None => Err(UserError::Authentication(format!(
