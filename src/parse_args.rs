@@ -45,6 +45,6 @@ pub fn config_from_arguments(arg: &Arg) -> Result<Config, ApplicationError> {
 /// Manage user
 pub fn manage_user(cmd: &UserCommand, auth_path: &str) {
     if let Err(e) = user_manage(cmd, auth_path) {
-        panic!("Error managing users: {}", e);
+        panic!("Error managing users: {e}");
     };
 }

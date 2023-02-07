@@ -29,14 +29,14 @@ async fn main() -> Result<(), ()> {
     // Display config
     if matches.default {
         let default_yaml = Config::default().to_string().expect("Failed to serialize.");
-        println!("{}", default_yaml);
+        println!("{default_yaml}");
         return Ok(());
     }
     // read config file if needed
     let conf = match parse_args::config_from_arguments(&matches) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error while getting configuration: {}", e);
+            eprintln!("Error while getting configuration: {e}");
             return Err(());
         }
     };

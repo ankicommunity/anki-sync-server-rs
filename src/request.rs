@@ -238,15 +238,13 @@ pub async fn host_key(
                 })
             } else {
                 Err(UserError::Authentication(format!(
-                    "Authentication failed for user {}",
-                    username
+                    "Authentication failed for user {username}"
                 ))
                 .into())
             }
         }
         None => Err(UserError::Authentication(format!(
-            "Authentication failed for nonexistent user {}",
-            username
+            "Authentication failed for nonexistent user {username}"
         ))
         .into()),
     }
