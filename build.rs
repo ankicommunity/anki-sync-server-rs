@@ -19,8 +19,8 @@ fn main() {
     //     println!("cargo:rustc-link-lib=static=sqlite3");
     // }
     let pat = "tls";
-    let key = format!("CARGO_FEATURE_{}", pat).to_uppercase();
+    let key = format!("CARGO_FEATURE_{pat}").to_uppercase();
     if env::var_os(key).is_some() {
-        println!("cargo:rustc-cfg=feature=\"{}\"", pat)
+        println!("cargo:rustc-cfg=feature=\"{pat}\"")
     }
 }
