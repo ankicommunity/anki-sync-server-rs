@@ -26,7 +26,6 @@ jobs:
       - name: Clone patch Anki
         run: |
           sh ./scripts/clone_patch_anki
-          cp ./scripts/Cargo.toml anki/rslib/
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
