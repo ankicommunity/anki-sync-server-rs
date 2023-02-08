@@ -46,6 +46,7 @@ You can also build the binary from source code [Install](docs/INSTALL.md) or bui
 Due to the software update,Now Anki supports sync custom server settings inside the client.
 1. Go to `Tools ->Preferences--<Syncing`
 2. see below and enter your server address in the blank labled `self-hosted sync server`.
+Here is an example.If your server address is `192.0.0.1`,then the content to fill in is `http://192.0.0.1:27701/`  
 3. Restart Anki
 #### <2.1.57 ((install add-on from ankiweb)
 1. Go to `Tools -> Add-ons`
