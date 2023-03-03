@@ -1,23 +1,21 @@
-From 41d4b0ea08bba88e114c0ad11ad8038d1b48a00f Mon Sep 17 00:00:00 2001
+From d70e168c5dd7b1476847c40c8612c8b498c9e1e7 Mon Sep 17 00:00:00 2001
 From: dobefore <1432338032@qq.com>
-Date: Mon, 6 Feb 2023 17:50:12 +0800
-Subject: [PATCH] as
+Date: Fri, 3 Mar 2023 17:22:08 +0800
+Subject: [PATCH] changes
 
 ---
- rslib/i18n/build/gather.rs                      |  4 ++--
+ rslib/i18n/build/gather.rs                      |  6 +++---
  rslib/src/sync/http_server/media_manager/mod.rs |  4 ++--
  rslib/src/sync/http_server/mod.rs               | 10 +++++-----
- rslib/src/sync/http_server/routes.rs            |  4 ++--
  rslib/src/sync/http_server/user.rs              |  2 +-
- rslib/src/sync/media/begin.rs                   |  2 +-
  rslib/src/sync/request/mod.rs                   |  4 ++--
- 7 files changed, 15 insertions(+), 15 deletions(-)
+ 5 files changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/rslib/i18n/build/gather.rs b/rslib/i18n/build/gather.rs
-index 3064e9691..951fcfee2 100644
+index 3064e9691..a7901c80c 100644
 --- a/rslib/i18n/build/gather.rs
 +++ b/rslib/i18n/build/gather.rs
-@@ -21,7 +21,7 @@ pub fn get_ftl_data() -> TranslationsByLang {
+@@ -21,11 +21,11 @@ pub fn get_ftl_data() -> TranslationsByLang {
      let ftl_base = source_tree_root();
      add_folder(&mut map, &ftl_base.join("core"), "templates");
      // And core translations from submodule
@@ -26,6 +24,11 @@ index 3064e9691..951fcfee2 100644
  
      if let Some(path) = extra_ftl_root() {
          // Mobile client has requested its own extra translations
+-        add_translation_root(&mut map, &path, false);
++        // add_translation_root(&mut map, &path, false);
+         // In a debug build, also include the Qt translations so that our Python unit
+         // tests pass.
+         if std::env::var("RELEASE").is_err() {
 @@ -35,7 +35,7 @@ pub fn get_ftl_data() -> TranslationsByLang {
          // Qt core templates from this repo
          add_folder(&mut map, &ftl_base.join("qt"), "templates");
@@ -56,7 +59,7 @@ index ca5214a20..4e35c89f9 100644
          create_dir_all(&media_folder).or_internal_err("media folder create")?;
          Ok(Self {
 diff --git a/rslib/src/sync/http_server/mod.rs b/rslib/src/sync/http_server/mod.rs
-index 9e585c3c7..1ad8ca8cc 100644
+index 9e585c3c7..d3e137ea6 100644
 --- a/rslib/src/sync/http_server/mod.rs
 +++ b/rslib/src/sync/http_server/mod.rs
 @@ -3,9 +3,9 @@
@@ -77,38 +80,16 @@ index 9e585c3c7..1ad8ca8cc 100644
  
  pub struct SimpleServer {
 -    state: Mutex<SimpleServerInner>,
-+    pub state: Mutex<SimpleServerInner>,
++   pub state: Mutex<SimpleServerInner>,
  }
  
  pub struct SimpleServerInner {
      /// hkey->user
 -    users: HashMap<String, User>,
-+    pub users: HashMap<String, User>,
++  pub  users: HashMap<String, User>,
  }
  
  impl SimpleServerInner {
-diff --git a/rslib/src/sync/http_server/routes.rs b/rslib/src/sync/http_server/routes.rs
-index a8fd90342..522fe0e55 100644
---- a/rslib/src/sync/http_server/routes.rs
-+++ b/rslib/src/sync/http_server/routes.rs
-@@ -18,7 +18,7 @@ use crate::sync::media::begin::SyncBeginRequest;
- use crate::sync::media::protocol::MediaSyncMethod;
- use crate::sync::media::protocol::MediaSyncProtocol;
- use crate::sync::request::IntoSyncRequest;
--use crate::sync::request::SyncRequest;
-+pub use crate::sync::request::SyncRequest;
- use crate::sync::version::SyncVersion;
- 
- macro_rules! sync_method {
-@@ -29,7 +29,7 @@ macro_rules! sync_method {
-     }};
- }
- 
--async fn sync_handler<P: SyncProtocol>(
-+pub async fn sync_handler<P: SyncProtocol>(
-     Path(method): Path<SyncMethod>,
-     State(server): State<P>,
-     request: SyncRequest<Vec<u8>>,
 diff --git a/rslib/src/sync/http_server/user.rs b/rslib/src/sync/http_server/user.rs
 index df7ae7596..39ead0d2a 100644
 --- a/rslib/src/sync/http_server/user.rs
@@ -122,19 +103,6 @@ index df7ae7596..39ead0d2a 100644
      pub name: String,
      pub col: Option<Collection>,
      pub sync_state: Option<ServerSyncState>,
-diff --git a/rslib/src/sync/media/begin.rs b/rslib/src/sync/media/begin.rs
-index e76492520..889c3c9bc 100644
---- a/rslib/src/sync/media/begin.rs
-+++ b/rslib/src/sync/media/begin.rs
-@@ -15,7 +15,7 @@ pub struct SyncBeginQuery {
-     pub client_version: String,
- }
- 
--#[derive(Debug, Serialize, Deserialize)]
-+#[derive(Debug, Serialize, Deserialize,Clone)]
- pub struct SyncBeginRequest {
-     /// Older clients provide this in the multipart wrapper; our router will
-     /// inject the value in if necessary. The route handler should check that
 diff --git a/rslib/src/sync/request/mod.rs b/rslib/src/sync/request/mod.rs
 index acc56eead..0b2748c8d 100644
 --- a/rslib/src/sync/request/mod.rs
