@@ -17,6 +17,7 @@ use lazy_static::lazy_static;
 use std::env;
 
 lazy_static! {
+    // when set,it will be used in method decode_zstd_body_for_server while paring request body.
     static ref MAX_COLLECTION_UPLOAD_SIZE: String =
         env::var("MAX_SYNC_PAYLOAD_MEGS").unwrap_or_else(|_| "1000".to_string());
     static ref USERNAME: String = env::var("ANKISYNCD_USERNAME").unwrap_or_else(|_| "".to_string());
@@ -81,21 +82,3 @@ async fn main() -> Result<(), ()> {
     app_config::run(&conf).await.unwrap();
     Ok(())
 }
-// # native build on host or docker
-// [target.arm-unknown-linux-gnueabihf.dependencies]
-// rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-// # native build on host or docker
-// [target.armv7-unknown-linux-gnueabihf.dependencies]
-// rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-// # native build on host or docker
-// [target.armv7h-unknown-linux-gnueabihf.dependencies]
-// rusqlite = {version = "0.28.0",features = ["bundled"]}
-
-// #use cross-compiled static sqlite3 library
-// [target.arm-unknown-linux-musleabihf.dependencies]
-// rusqlite = "0.28.0"
-// #use cross-compiled static sqlite3 library
-// [target.aarch64-unknown-linux-musl.dependencies]
-// rusqlite = "0.28.0"

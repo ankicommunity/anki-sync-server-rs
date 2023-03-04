@@ -6,7 +6,6 @@ use actix_web::web;
 use actix_web::{error, HttpResponse};
 use anki::sync::collection::protocol::SyncMethod;
 use anki::sync::collection::protocol::SyncProtocol;
-use anki::sync::http_server::routes::SyncRequest;
 use anki::sync::http_server::SimpleServer;
 use anki::sync::login::HostKeyRequest;
 use anki::sync::media::begin::SyncBeginQuery;
@@ -14,6 +13,7 @@ use anki::sync::media::begin::SyncBeginRequest;
 use anki::sync::media::protocol::MediaSyncMethod;
 use anki::sync::media::protocol::MediaSyncProtocol;
 use anki::sync::request::IntoSyncRequest;
+use anki::sync::request::SyncRequest;
 use anki::sync::version::SyncVersion;
 use std::sync::Arc;
 

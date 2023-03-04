@@ -13,7 +13,7 @@ use anki::sync::version::SyncVersion;
 use anki::sync::{
     http_server::SimpleServer,
     login::{HostKeyRequest, HostKeyResponse},
-    request::header_and_stream::decode_zstd_body,
+    request::header_and_stream::decode_zstd_body_for_server,
 };
 use async_std::io::WriteExt;
 use futures_util::{future::LocalBoxFuture, TryStreamExt};
@@ -103,7 +103,7 @@ pub(super) async fn from_header_and_stream<T>(
 ) -> anki::sync::request::SyncRequest<T> {
     sync_header.sync_version.ensure_supported().unwrap();
 
-    let data = decode_zstd_body(body_stream).await.ok().unwrap();
+    let data = decode_zstd_body_for_server(body_stream).await.ok().unwrap();
     SyncRequest {
         data,
         json_output_type: std::marker::PhantomData,

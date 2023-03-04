@@ -212,3 +212,16 @@ Three.uodate readme
 Four. update version to 1.0.0 OK
 
 关于actix-web函数argument web::data如果在服务器启动前没有设置，那个函数就不会被使用，也不会返回错误，只是报告500，之不太好，要是能够报告错误就好，这样节省时间。
+
+
+update anki verion to 2.1.60.
+
+two. create new brahch 
+create new anki patch
+1. get current commit ID: d9d36078f17a2b4b8b44fcb802eb274911ebabe7
+2. make changes  git add . & git commit -m "changes".
+3. get current commit ID: d70e168c5dd7b1476847c40c8612c8b498c9e1e7
+4. diff: OK
+5. update ANKI_COMMIT ID in patch scripts OK
+
+
