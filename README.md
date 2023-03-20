@@ -55,7 +55,7 @@ Here is an example.If your server address is `192.0.0.1`,then the content to fil
 4. Apply your server IP address
 5. Restart Anki
 ### AnkiMobile
-It seems that Ankimobile now supports self-hosted sync server.At least for  Ankimobile 2.0.90(20090.2),A post from [A user has reported in Anki forum](https://forums.ankiweb.net/t/ankimobile-self-sync-server-failure-the-one-bundled-in-version-2-1-60-qt6/27862).
+It seems that Ankimobile now has the ability to sync against self-hosted sync server.At least for  Ankimobile 2.0.90(20090.2),A post from [A user has reported in Anki forum](https://forums.ankiweb.net/t/ankimobile-self-sync-server-failure-the-one-bundled-in-version-2-1-60-qt6/27862).
 As for the detailed steps,we will be happy to accept a PR about how to configure AnkiMobile to enable custom sync server If some one is using AnkiMobile and would be kind enough.
 When things do not go as expected,refer to the text:
 > If you're using AnkiMobile and are unable to connect to a server on your local network, please go into the iOS settings, locate Anki near the bottom, and toggle "Allow Anki to access local network" off and then on again.
