@@ -50,7 +50,15 @@
 3. 下载好后鼠标选中我们的插件`custom sync server redirector`,点击右下角的配置(Config)。
 4. 不出意外接着会弹出一个窗口，在里面填写您的服务端的地址。
 5. 重启Anki。
+### AnkiMobile
+AnkiMobile似乎已经支持和自建的同步服务器同步了。至少对于版本Ankimobile 2.0.90(20090.2)来说，似乎是可行的，这是一位IOS系统用户[在anki论坛报告的](https://forums.ankiweb.net/t/ankimobile-self-sync-server-failure-the-one-bundled-in-version-2-1-60-qt6/27862)。
 
+对于详细的配置步骤，如果正在使用AnkiMobile的用户愿意贡献出宝贵的时间和睿智提交一个PR，详细讲解如何设置AnkiMobile来和自建的同步服务器同步，我们将无比感谢。
+
+如果设置完成后发现不能同步可以参考下面的内容再试一次：
+> If you're using AnkiMobile and are unable to connect to a server on your local network, please go into the iOS settings, locate Anki near the bottom, and toggle "Allow Anki to access local network" off and then on again.
+
+上面的内容摘自[ANki tutorial](https://docs.ankiweb.net/sync-server.html#client-setup)
 ### AnkiDroid
 打开AnkiDroid,依次进入 `设置（Settings）` -> `高级（Advanced）` -> `自定义同步服务器（Custom sync server）` (对于2.16及以上的版本，依次进入 `设置（Settings）` -> `同步(Sync)` -> `Custom sync server自定义同步服务器（Custom sync server）` )。
 
