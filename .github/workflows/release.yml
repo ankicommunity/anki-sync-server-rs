@@ -270,8 +270,9 @@ jobs:
 
       - name: Build
         run: |
+          sudo apt install musl-tools
           export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
-          cargo build --target x86_64-unknown-linux-musl --release --features tls
+          cargo build --target x86_64-unknown-linux-musl --release 
       - name: Strip binaries (ankisyncd)
         run: $HOME/x86_64-linux-musl-cross/bin/x86_64-linux-musl-strip target/x86_64-unknown-linux-musl/release/ankisyncd
 
