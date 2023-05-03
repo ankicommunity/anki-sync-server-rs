@@ -284,7 +284,7 @@ jobs:
 
       - name: Copy files to output
         run: |
-          cp target/release/ankisyncd output/
+          cp target/x86_64-unknown-linux-musl/release/ankisyncd output/
           cp ankisyncd.toml output/
          
       - name: Upload artifact
