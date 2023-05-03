@@ -235,7 +235,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      
+
+      - name: Add cargo taget arm64
+        run: rustup target add x86_64-unknown-linux-musl
       # clone and patch anki library  
       - name: Clone patch Anki
         run: sh ./scripts/clone_patch_anki
@@ -245,6 +247,18 @@ jobs:
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - uses: robinraju/release-downloader@v1.4
+        with:
+          repository: "dobefore/musl-cross"
+          tag: "0.1.0"
+          fileName: "x86_64-linux-musl-cross.tgz"
+
+      - name: Copy musl-cross to home
+        run: cp  x86_64-linux-musl-cross.tgz $HOME
+
+      - name: unpack cross-compile toolchains musl
+        run: tar -zxvf $HOME/x86_64-linux-musl-cross.tgz -C $HOME
 
       # - name: Install Protoc
       #   run: |
@@ -256,11 +270,13 @@ jobs:
 
       - name: Build
         run: |
-          
-          cargo build --release --features tls
-
+          export PATH="$HOME/x86_64-linux-musl-cross/bin:$PATH"
+          cargo build --target x86_64-unknown-linux-musl --release --features tls
       - name: Strip binaries (ankisyncd)
-        run: strip target/release/ankisyncd
+        run: $HOME/x86_64-linux-musl-cross/bin/x86_64-linux-musl-strip target/x86_64-unknown-linux-musl/release/ankisyncd
+
+      # - name: Strip binaries (ankisyncd)
+        # run: strip target/release/ankisyncd
 
       - name: Create output directory
         run: mkdir output
