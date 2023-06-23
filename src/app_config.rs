@@ -80,7 +80,7 @@ pub fn config_app(cfg: &mut web::ServiceConfig) {
             ),
     );
 }
-fn set_users(
+pub fn set_users(
     base_folder: &Path,
     name_hash: Vec<(String, String)>,
 ) -> std::result::Result<HashMap<String, anki::sync::http_server::user::User>, ApplicationError> {
@@ -178,10 +178,14 @@ pub async fn run(config: &Config) -> std::result::Result<(), ApplicationError> {
     };
     // Create some global state prior to building the server
     let server = web::Data::new(Arc::new(server));
+    let auth_db = web::Data::new(auth_db.to_string());
+    let base_folder = web::Data::new(base_folder.to_owned());
     log::info!("listening on {}", config.listen_on());
     HttpServer::new(move || {
         App::new()
             .app_data(server.clone())
+            .app_data(auth_db.clone())
+            .app_data(base_folder.clone())
             .service(welcome)
             .service(favicon)
             .configure(app_config::config_app)

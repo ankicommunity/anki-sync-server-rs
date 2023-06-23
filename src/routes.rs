@@ -1,3 +1,6 @@
+#![allow(clippy::await_holding_lock)]
+use crate::app_config::set_users;
+use crate::db::fetch_users;
 use crate::response::make_response;
 
 use crate::{error::ApplicationError, request};
@@ -15,6 +18,8 @@ use anki::sync::media::protocol::MediaSyncProtocol;
 use anki::sync::request::IntoSyncRequest;
 use anki::sync::request::SyncRequest;
 use anki::sync::version::SyncVersion;
+
+use std::path::PathBuf;
 use std::sync::Arc;
 
 // here the syncrequest may fail,need be constructed from query
@@ -160,6 +165,8 @@ pub async fn collecction_sync_handler(
     req: Option<web::ReqData<SyncRequest<Vec<u8>>>>,
     method: web::Path<SyncMethod>, //(endpoint,sync_method)
     server: web::Data<Arc<SimpleServer>>,
+    auth_db: web::Data<String>,
+    base_folder: web::Data<PathBuf>,
 ) -> actix_web::Result<HttpResponse> {
     let sync_method = method.into_inner();
     // let sync_method:SyncMethod=serde_json::from_str(&method.into_inner().0).unwrap();
@@ -171,15 +178,34 @@ pub async fn collecction_sync_handler(
     // take out vec<u8> from json
     let res = match sync_method {
         SyncMethod::HostKey => {
+            // dynamically add users，access user database when client request login and
+            // update in-memory account,only add new accounts
+            let auth_db = auth_db.as_str();
+            let users = fetch_users(auth_db).map_err(ApplicationError::Sqlite)?;
+            let mut state = server.state.lock().expect("msg");
+            if let Some(u) = users {
+                let in_memory_hostkeys = state.users.keys().collect::<Vec<_>>();
+                // compare host_key,filter new hostkey
+                let mut new_users = vec![];
+                for (name, hash) in u {
+                    if !in_memory_hostkeys.contains(&&hash) {
+                        new_users.push((name, hash));
+                    }
+                }
+                let u = set_users(base_folder.into_inner().as_path(), new_users)?;
+                for (k, v) in u {
+                    state.users.insert(k, v);
+                }
+            }
             //  should replace the official host key function with the existing one.
             // in this case server is not consumed abd nay block later methods.
             let hkreq: HostKeyRequest = req
                 .into_output_type()
                 .json()
                 .map_err(ApplicationError::HttpError)?;
-            let data = request::host_key(hkreq, server).await?;
+            let usrs = &state.users;
+            let data = request::host_key(hkreq, usrs).await?;
             let data = serde_json::to_vec(&data)?;
-
             make_response(data, sync_version)
         }
         SyncMethod::Meta => {
