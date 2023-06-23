@@ -4,24 +4,24 @@
 // And middleware method reference to https://github.com/actix/examples/blob/db2edcaeb1fdf8c609e42f4e569122ef5d8ae613/middleware/middleware-ext-mut/src/add_msg.rs
 use actix_web::{
     dev::{self, Service, ServiceRequest, ServiceResponse, Transform},
-    web, Error, HttpMessage,
+    Error, HttpMessage,
 };
-use anki::sync::request::header_and_stream::SyncHeader;
 use anki::sync::request::multipart::decode_gzipped_data;
 use anki::sync::request::SyncRequest;
 use anki::sync::version::SyncVersion;
+use anki::sync::{http_server::user::User, request::header_and_stream::SyncHeader};
 use anki::sync::{
-    http_server::SimpleServer,
     login::{HostKeyRequest, HostKeyResponse},
     request::header_and_stream::decode_zstd_body_for_server,
 };
 use async_std::io::WriteExt;
 use futures_util::{future::LocalBoxFuture, TryStreamExt};
+use std::net::IpAddr;
 use std::{
+    collections::HashMap,
     future::{ready, Ready},
     rc::Rc,
 };
-use std::{net::IpAddr, sync::Arc};
 
 use crate::{
     error::ApplicationError,
@@ -173,17 +173,15 @@ where
                             .ok()
                             .unwrap();
                     // let pl = req.take_payload();
-                    let sr =
-                        from_header_and_stream::<Vec<u8>>(sync_header.unwrap(), pl, ip.unwrap())
-                            .await;
-                    sr
+
+                    from_header_and_stream::<Vec<u8>>(sync_header.unwrap(), pl, ip.unwrap()).await
                 }
                 None => {
                     // let pl = req.take_payload();
                     // If SYNC_HEADER_NAME is absent,
                     let pl = actix_multipart::Multipart::new(headers, pl);
-                    let sr = from_multipart::<Vec<u8>>(ip.unwrap(), pl).await;
-                    sr
+
+                    from_multipart::<Vec<u8>>(ip.unwrap(), pl).await
                 }
             };
             req.extensions_mut().insert(sync_request);
@@ -222,13 +220,13 @@ where
 /// succeed.Abd sends the host key back to the client.
 pub async fn host_key(
     hkreq: HostKeyRequest,
-    server: web::Data<Arc<SimpleServer>>,
+    users: &HashMap<String, User>,
 ) -> Result<HostKeyResponse, ApplicationError> {
     let username = hkreq.username;
     let password = hkreq.password;
     // extract hash from User if username match,else return no such username error,
-    let state = server.state.lock().expect("lock mytex");
-    let user = state.users.iter().find(|(_hash, u)| u.name == username);
+    // let state = server.state.lock().expect("lock mytex");
+    let user = users.iter().find(|(_hash, u)| u.name == username);
     match user {
         Some((hash, _u)) => {
             let actual_hash = compute_hash(&username, &password, hash);
