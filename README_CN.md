@@ -9,6 +9,10 @@
 [简体中文](README_CN.md)|[English](README.md)
 </div>
 
+**告知：这个项目已经停止维护**
+目前这个版本的服务器支持到2.1.64。
+请使用官方的同步服务器项目，[guide](https://docs.ankiweb.net/sync-server.html)。
+
 这是一个Rust语言版本的Anki 自建同步服务端，这个服务器追踪[Anki官方](https://github.com/ankitects/anki)同步服务端的进度，它们都是基于sqlite c 作为数据存储后端。
 
 也有Anki官方推出的镶嵌在Anki客户端的同步服务端和通过Python安装的同步服务端，[看这里](https://docs.ankiweb.net/sync-server.html)
