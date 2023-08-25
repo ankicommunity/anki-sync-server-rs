@@ -11,10 +11,11 @@ docker pull ankicommunity/anki-sync-server-rs:latest
 ```
 2. run it in background (you can specify the container name by passing `--name=ankisyncd` or use default name).And,you can pass env vars to following command line to add users,for example,following part of env vars will add an account whose username is `test` and password is `123456`.
 ```
-docker run -d -it --name=ankisyncd -e ANKISYNCD_USERNAME=test -e ANKISYNCD_PASSWORD=123456 ankicommunity/anki-sync-server-rs:latest
+docker run -d -it --name=ankisyncd -e ANKISYNCD_USERNAME=test -e ANKISYNCD_PASSWORD=123456 -p 27701:27701 -v ./data:/app ankicommunity/anki-sync-server-rs:latest
 ```
+Please do not remove the `-e ANKISYNCD_USERNAME=test -e ANKISYNCD_PASSWORD=123456` part, which could be configured in the next step. Otherwise, the container would fail to start.
 3. add user
-If env variables are already set ,which means the account has been added,there is no need to do this step.If not,bring up the shell of the `ankisyncd` container(or default container name) and run command
+If env variables are already set, which means the account has been added, there is no need to do this step. If not, bring up the shell of the `ankisyncd` container (or default container name) and run command
 ```
 docker exec -it ankisyncd /bin/bash
 ankisyncd user -a username password
