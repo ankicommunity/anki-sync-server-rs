@@ -10,7 +10,7 @@
 
 </div>
 
-**Warning:This project is no longer maintained due to lack of interest.**
+**Warning:This project is no longer maintained.**
 
 It may works with Anki clients ~2.1.64
 Please use the official sync server,for more see [guide](https://docs.ankiweb.net/sync-server.html)
