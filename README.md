@@ -11,8 +11,11 @@
 </div>
 
 **Warning:This project is no longer maintained due to lack of interest.**
+
 It may works with Anki clients ~2.1.64
 Please use the official sync server,for more see [guide](https://docs.ankiweb.net/sync-server.html)
+
+
 A cross-platform Anki sync server.
 
 This is a rust (still sqlite c library backed) take on anki sync server ,which keep track of the
