@@ -22,7 +22,7 @@ actix-web = "4.3.0"
 actix-multipart = "0.4.0"
 async-std = "1.12.0"
 futures-util = "0.3.25"
-bytes= "1.2.1"
+bytes= "1.4.0"
 serde = {version="1.0.144", features = ["derive"] }
 serde_json = "1.0.87"
 flate2 = "1.0.24"
@@ -34,7 +34,7 @@ urlparse = "0.7.3"
 hex = "0.4.3"
 # maybe specify some features below.
 anki = {path="anki/rslib"}
-clap ={version= "4.0.22",features = ["derive"]}
+clap ={version= "4.3.23",features = ["derive"]}
 toml = "0.5"
 async-trait = "0.1.58"
 zip = { version = "0.6.2", default-features = false, features = ["deflate", "time"] }
@@ -42,8 +42,8 @@ zstd = { version = "0.12.2", features = ["zstdmt"] }
 unicode-normalization = "0.1.22"
 lazy_static = "1.4.0"
 log = "0.4"
+rusqlite = {version = "0.29.0",features = ["bundled"]}
 
-rusqlite = {version = "0.28.0",features = ["bundled"]}
 [dependencies.rustls]
 optional = true
 version = "0.20.7"
@@ -51,7 +51,4 @@ version = "0.20.7"
 [dependencies.rustls-pemfile]
 optional = true
 version = "1.0.1"
-
-# [target.'cfg(target_arch="x86_64")'.dependencies]
-#rusqlite = {version = "0.28.0",features = ["bundled"]}
 
